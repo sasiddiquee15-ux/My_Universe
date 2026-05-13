@@ -1,0 +1,1883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Universe — Sabiha</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    /* ============================================================
+       CSS VARIABLES — রং, ফন্ট, সব কিছু এক জায়গায় রাখা
+       পরে customize করতে চাইলে শুধু এখানে বদলালেই হবে
+    ============================================================ */
+    :root {
+      --bg:        #0a0a0f;        /* মূল background রং */
+      --bg2:       #111118;        /* card background */
+      --bg3:       #1a1a24;        /* hover background */
+      --border:    rgba(255,255,255,0.07);
+      --accent:    #7c6aff;        /* মূল purple accent */
+      --accent2:   #ff6ab0;        /* pink accent */
+      --accent3:   #6affda;        /* teal accent */
+      --text:      #e8e8f0;        /* মূল text রং */
+      --text2:     #888899;        /* subtitle text */
+      --glass:     rgba(255,255,255,0.04);
+      --glow:      0 0 40px rgba(124,106,255,0.15);
+      --radius:    16px;
+      --font:      'Sora', sans-serif;
+      --mono:      'JetBrains Mono', monospace;
+    }
+
+    /* ============================================================
+       RESET — browser এর default style সরিয়ে দেওয়া
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ============================================================
+       BACKGROUND GLOW EFFECT — পেছনে আলোর effect
+    ============================================================ */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 20%, rgba(124,106,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255,106,176,0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       LOGIN PAGE — প্রথমে যা দেখবে
+    ============================================================ */
+    #loginPage {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+      transition: opacity 0.5s, visibility 0.5s;
+    }
+    #loginPage.hidden { opacity: 0; visibility: hidden; }
+
+    .login-box {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%; max-width: 420px;
+      box-shadow: var(--glow);
+      position: relative; z-index: 1;
+      animation: fadeUp 0.6s ease;
+    }
+
+    /* Login box এর উপরে galaxy icon */
+    .login-icon {
+      font-size: 48px; text-align: center; margin-bottom: 8px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+
+    .login-title {
+      text-align: center; font-size: 22px; font-weight: 700;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .login-sub {
+      text-align: center; color: var(--text2); font-size: 13px;
+      margin-bottom: 32px;
+    }
+
+    /* Input field style */
+    .input-group { margin-bottom: 16px; }
+    .input-group label {
+      display: block; font-size: 12px; color: var(--text2);
+      margin-bottom: 6px; font-weight: 500; letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .input-group input {
+      width: 100%; padding: 12px 16px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--font); font-size: 14px;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,255,0.15);
+    }
+
+    .remember-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 24px; font-size: 13px; color: var(--text2);
+      cursor: pointer;
+    }
+    .remember-row input[type=checkbox] { accent-color: var(--accent); }
+
+    /* Login button */
+    .btn-primary {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, var(--accent), #5c4fd6);
+      border: none; border-radius: 10px;
+      color: white; font-family: var(--font);
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(124,106,255,0.4);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .login-error {
+      color: #ff6b6b; font-size: 13px; text-align: center;
+      margin-top: 12px; display: none;
+    }
+
+    /* ============================================================
+       MAIN APP — login এর পরে যা দেখাবে
+    ============================================================ */
+    #app { display: none; position: relative; z-index: 1; min-height: 100vh; }
+    #app.visible { display: flex; }
+
+    /* ============================================================
+       SIDEBAR — বাম পাশের navigation
+    ============================================================ */
+    .sidebar {
+      width: 240px; min-height: 100vh;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; left: 0; top: 0; bottom: 0;
+      z-index: 50; transition: transform 0.3s;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-logo {
+      font-size: 18px; font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 2px;
+    }
+    .sidebar-user { font-size: 12px; color: var(--text2); }
+
+    /* Navigation items */
+    .nav-section { padding: 16px 12px 8px; }
+    .nav-label {
+      font-size: 10px; color: var(--text2); font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0 8px; margin-bottom: 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; font-size: 14px; color: var(--text2);
+      transition: all 0.2s; margin-bottom: 2px;
+      border: 1px solid transparent;
+    }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    /* Active navigation item */
+    .nav-item.active {
+      background: rgba(124,106,255,0.12);
+      border-color: rgba(124,106,255,0.2);
+      color: var(--accent);
+    }
+    .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+    .sidebar-bottom {
+      margin-top: auto; padding: 16px 12px;
+      border-top: 1px solid var(--border);
+    }
+    .logout-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      cursor: pointer; font-size: 14px; color: #ff6b6b;
+      transition: background 0.2s;
+    }
+    .logout-btn:hover { background: rgba(255,107,107,0.1); }
+
+    /* ============================================================
+       MAIN CONTENT — ডান পাশের মূল এলাকা
+    ============================================================ */
+    .main {
+      margin-left: 240px; flex: 1;
+      padding: 32px; min-height: 100vh;
+    }
+
+    /* Page header */
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+    .page-sub { font-size: 14px; color: var(--text2); }
+
+    /* ============================================================
+       CARDS — সব section এ ব্যবহার হওয়া card style
+    ============================================================ */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px; transition: border-color 0.2s;
+    }
+    .card:hover { border-color: rgba(124,106,255,0.2); }
+
+    /* ============================================================
+       DASHBOARD — মূল dashboard section
+    ============================================================ */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px; margin-bottom: 24px;
+    }
+
+    /* Quick stats cards */
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      cursor: pointer; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .stat-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-card.purple::before { background: linear-gradient(90deg, var(--accent), transparent); }
+    .stat-card.pink::before   { background: linear-gradient(90deg, var(--accent2), transparent); }
+    .stat-card.teal::before   { background: linear-gradient(90deg, var(--accent3), transparent); }
+    .stat-card.orange::before { background: linear-gradient(90deg, #ffaa6a, transparent); }
+
+    .stat-card:hover { transform: translateY(-2px); border-color: rgba(124,106,255,0.3); }
+    .stat-icon { font-size: 28px; margin-bottom: 10px; }
+    .stat-value { font-size: 28px; font-weight: 700; font-family: var(--mono); }
+    .stat-label { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+    /* Recent activity section */
+    .recent-list { display: flex; flex-direction: column; gap: 10px; }
+    .recent-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: var(--bg3);
+      border-radius: 10px; border: 1px solid var(--border);
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .recent-item:hover { border-color: rgba(124,106,255,0.3); }
+    .recent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .recent-text { flex: 1; font-size: 14px; }
+    .recent-time { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+
+    /* ============================================================
+       NOTES & JOURNAL — notes section
+    ============================================================ */
+    .notes-toolbar {
+      display: flex; gap: 10px; margin-bottom: 20px;
+      flex-wrap: wrap; align-items: center;
+    }
+    .search-box {
+      flex: 1; min-width: 200px;
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+    }
+    .search-box input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-family: var(--font); font-size: 14px;
+      flex: 1;
+    }
+    .search-box input::placeholder { color: var(--text2); }
+
+    .btn-add {
+      display: flex; align-items: center; gap: 6px;
+      padding: 10px 18px;
+      background: linear-gradient(135deg, var(--accent), #5c4fd6);
+      border: none; border-radius: 10px;
+      color: white; font-family: var(--font);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-add:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,106,255,0.4); }
+
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    /* একটা note card */
+    .note-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px;
+      cursor: pointer; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .note-card::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; width: 3px; height: 100%;
+      background: var(--accent);
+    }
+    .note-card:hover { border-color: rgba(124,106,255,0.3); transform: translateY(-2px); }
+    .note-card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .note-card-preview { font-size: 13px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+    .note-card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; color: var(--text2); font-family: var(--mono);
+    }
+    .mood-tag {
+      padding: 2px 8px; border-radius: 20px; font-size: 11px;
+      background: rgba(124,106,255,0.15); color: var(--accent);
+    }
+
+    /* Note editor modal */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; opacity: 0; visibility: hidden;
+      transition: all 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 20px; width: 100%; max-width: 600px;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      animation: fadeUp 0.3s ease;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--bg2); z-index: 1;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--bg3); border: none; color: var(--text2);
+      cursor: pointer; font-size: 16px; display: flex;
+      align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .modal-close:hover { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+    .modal-body { padding: 24px; }
+
+    /* Form elements inside modal */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block; font-size: 12px; color: var(--text2);
+      margin-bottom: 6px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .form-input, .form-textarea, .form-select {
+      width: 100%; padding: 11px 14px;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--font); font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(124,106,255,0.1);
+    }
+    .form-textarea { min-height: 140px; resize: vertical; line-height: 1.6; }
+    .form-select option { background: var(--bg2); }
+
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--border);
+      display: flex; gap: 10px; justify-content: flex-end;
+    }
+    .btn-ghost {
+      padding: 10px 18px; background: var(--bg3);
+      border: 1px solid var(--border); border-radius: 10px;
+      color: var(--text2); font-family: var(--font);
+      font-size: 13px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+
+    /* ============================================================
+       STUDY HUB — পড়াশোনার section
+    ============================================================ */
+    .subject-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .subject-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      cursor: pointer; transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .subject-card::after {
+      content: ''; position: absolute;
+      bottom: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transform: scaleX(0); transition: transform 0.3s;
+      transform-origin: left;
+    }
+    .subject-card:hover { transform: translateY(-2px); border-color: rgba(124,106,255,0.3); }
+    .subject-card:hover::after { transform: scaleX(1); }
+    .subject-emoji { font-size: 32px; margin-bottom: 10px; }
+    .subject-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .subject-count { font-size: 12px; color: var(--text2); }
+    .subject-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .tag {
+      padding: 3px 10px; border-radius: 20px; font-size: 11px;
+      background: rgba(124,106,255,0.1); color: var(--accent);
+      border: 1px solid rgba(124,106,255,0.2);
+    }
+
+    /* ============================================================
+       UNIVERSITY PROJECTS — academic projects section
+    ============================================================ */
+    .projects-list { display: flex; flex-direction: column; gap: 14px; }
+    .project-item {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .project-item:hover { border-color: rgba(124,106,255,0.3); transform: translateX(4px); }
+    .project-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: rgba(124,106,255,0.12);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .project-info { flex: 1; }
+    .project-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+    .project-meta { font-size: 12px; color: var(--text2); }
+    .project-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    }
+    .badge-ongoing { background: rgba(106,255,218,0.1); color: var(--accent3); }
+    .badge-done    { background: rgba(124,106,255,0.1); color: var(--accent); }
+    .badge-pending { background: rgba(255,170,106,0.1); color: #ffaa6a; }
+
+    /* ============================================================
+       TEAM MANAGER — team members section
+    ============================================================ */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .member-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .member-card:hover { border-color: rgba(124,106,255,0.3); transform: translateY(-2px); }
+    .member-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; color: white;
+      margin-bottom: 12px;
+    }
+    .member-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .member-id   { font-size: 12px; color: var(--text2); font-family: var(--mono); margin-bottom: 10px; }
+    .member-info { display: flex; flex-direction: column; gap: 5px; }
+    .member-info-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--text2);
+    }
+    .member-info-row span:first-child { font-size: 14px; }
+    .member-role {
+      display: inline-block; margin-top: 10px;
+      padding: 3px 10px; border-radius: 20px; font-size: 11px;
+      background: rgba(255,106,176,0.1); color: var(--accent2);
+      border: 1px solid rgba(255,106,176,0.2);
+    }
+
+    /* ============================================================
+       CALENDAR & TASKS — calendar section
+    ============================================================ */
+    .calendar-layout {
+      display: grid; grid-template-columns: 1fr 320px; gap: 20px;
+    }
+    .tasks-list { display: flex; flex-direction: column; gap: 10px; }
+    .task-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 16px; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: 12px;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .task-item:hover { border-color: rgba(124,106,255,0.3); }
+    .task-check {
+      width: 18px; height: 18px; border-radius: 5px;
+      border: 2px solid var(--border); flex-shrink: 0; margin-top: 1px;
+      cursor: pointer; transition: all 0.2s; display: flex;
+      align-items: center; justify-content: center;
+    }
+    .task-check.checked { background: var(--accent); border-color: var(--accent); }
+    .task-check.checked::after { content: '✓'; color: white; font-size: 11px; }
+    .task-content { flex: 1; }
+    .task-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .task-title.done { text-decoration: line-through; color: var(--text2); }
+    .task-due { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+    .task-priority {
+      padding: 2px 8px; border-radius: 20px; font-size: 11px;
+      flex-shrink: 0;
+    }
+    .priority-high   { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+    .priority-medium { background: rgba(255,170,106,0.1); color: #ffaa6a; }
+    .priority-low    { background: rgba(106,255,218,0.1); color: var(--accent3); }
+
+    /* Simple calendar grid */
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 4px; margin-top: 12px;
+    }
+    .cal-day-name {
+      text-align: center; font-size: 11px; color: var(--text2);
+      padding: 6px 0; font-weight: 600; letter-spacing: 0.05em;
+    }
+    .cal-day {
+      aspect-ratio: 1; display: flex; align-items: center;
+      justify-content: center; border-radius: 8px;
+      font-size: 13px; cursor: pointer; transition: background 0.2s;
+    }
+    .cal-day:hover { background: var(--bg3); }
+    .cal-day.today {
+      background: var(--accent); color: white; font-weight: 700;
+    }
+    .cal-day.has-event { position: relative; }
+    .cal-day.has-event::after {
+      content: ''; position: absolute; bottom: 3px;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--accent2);
+    }
+    .cal-day.other-month { color: var(--text2); opacity: 0.4; }
+
+    /* ============================================================
+       PERSONAL VAULT — private files/memories section
+    ============================================================ */
+    .vault-folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .folder-item {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 16px;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .folder-item:hover { border-color: rgba(124,106,255,0.3); transform: translateY(-2px); }
+    .folder-icon { font-size: 32px; margin-bottom: 8px; }
+    .folder-name { font-size: 13px; font-weight: 500; }
+    .folder-count { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+    /* ============================================================
+       SETTINGS — settings page
+    ============================================================ */
+    .settings-section { margin-bottom: 28px; }
+    .settings-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.07em; }
+    .settings-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 18px; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .settings-row-info { }
+    .settings-row-label { font-size: 14px; font-weight: 500; }
+    .settings-row-desc { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+    /* Toggle switch */
+    .toggle {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: var(--bg3); border: 1px solid var(--border);
+      cursor: pointer; position: relative; transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+    .toggle::after {
+      content: ''; position: absolute;
+      top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white; transition: transform 0.2s;
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ============================================================
+       SEARCH PAGE
+    ============================================================ */
+    .search-big {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 14px 18px;
+      margin-bottom: 24px;
+      box-shadow: var(--glow);
+    }
+    .search-big input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-family: var(--font);
+      font-size: 16px; flex: 1;
+    }
+    .search-big input::placeholder { color: var(--text2); }
+    .search-results { display: flex; flex-direction: column; gap: 10px; }
+    .search-result-item {
+      padding: 14px 18px; background: var(--bg2);
+      border: 1px solid var(--border); border-radius: 12px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .search-result-item:hover { border-color: rgba(124,106,255,0.3); }
+    .search-result-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+    .search-result-meta { font-size: 12px; color: var(--text2); }
+
+    /* ============================================================
+       EMPTY STATE — কিছু না থাকলে যা দেখাবে
+    ============================================================ */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text2);
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ============================================================
+       ANIMATIONS
+    ============================================================ */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .page { animation: fadeUp 0.35s ease; }
+
+    /* ============================================================
+       SCROLLBAR — custom scrollbar style
+    ============================================================ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* ============================================================
+       RESPONSIVE — mobile এ sidebar handle করা
+    ============================================================ */
+    .menu-toggle {
+      display: none; position: fixed; top: 16px; left: 16px; z-index: 60;
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--bg2); border: 1px solid var(--border);
+      cursor: pointer; align-items: center; justify-content: center; font-size: 18px;
+    }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; padding: 20px; padding-top: 72px; }
+      .menu-toggle { display: flex; }
+      .calendar-layout { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================================
+       PASSWORD CHANGE FORM
+    ============================================================ */
+    .change-pass-form {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; max-width: 400px;
+    }
+
+    /* Two column grid for forms */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+    }
+    .section-header-title { font-size: 16px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     LOGIN PAGE
+     এটাই প্রথম দেখাবে — সঠিক password দিলে dashboard খুলবে
+============================================================ -->
+<div id="loginPage">
+  <div class="login-box">
+    <div class="login-icon">🌌</div>
+    <div class="login-title">My Universe</div>
+    <div class="login-sub">Sabiha's Personal Space</div>
+
+    <div class="input-group">
+      <label>Username</label>
+      <!-- তোমার username এখানে type করবে -->
+     <input type="email" id="loginUser" placeholder="yourmail@gmail.com " autocomplete="username"/>
+    </div>
+    <div class="input-group">
+      <label>Password</label>
+      <!-- তোমার password এখানে type করবে -->
+       <input type="password" id="loginPass" placeholder="Password " autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()"/>
+            
+    </div>
+
+    <label class="remember-row">
+      <input type="checkbox" id="rememberMe"/> Remember me
+    </label>
+
+    <button class="btn-primary" onclick="doLogin()">Enter My Universe ✦</button>
+    <div class="login-error" id="loginError">❌ Wrong username or password!</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MOBILE MENU TOGGLE BUTTON
+============================================================ -->
+<button class="menu-toggle" onclick="toggleSidebar()" id="menuBtn">☰</button>
+
+<!-- ============================================================
+     MAIN APP — login এর পরে দেখাবে
+============================================================ -->
+<div id="app">
+
+  <!-- SIDEBAR — বাম পাশের menu -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">🌌 My Universe</div>
+      <div class="sidebar-user" id="sidebarUser">Welcome, Sabiha</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <!-- প্রতিটা nav-item এ onclick দিয়ে page switch হয় -->
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="icon">🏠</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('search')">
+        <span class="icon">🔎</span> Search
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Study</div>
+      <div class="nav-item" onclick="showPage('studyhub')">
+        <span class="icon">📚</span> Study Hub
+      </div>
+      <div class="nav-item" onclick="showPage('notes')">
+        <span class="icon">📝</span> Notes & Journal
+      </div>
+      <div class="nav-item" onclick="showPage('projects')">
+        <span class="icon">🎓</span> University Projects
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Personal</div>
+      <div class="nav-item" onclick="showPage('vault')">
+        <span class="icon">🔒</span> Personal Vault
+      </div>
+      <div class="nav-item" onclick="showPage('team')">
+        <span class="icon">👥</span> Team Manager
+      </div>
+      <div class="nav-item" onclick="showPage('calendar')">
+        <span class="icon">📅</span> Calendar & Tasks
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">System</div>
+      <div class="nav-item" onclick="showPage('settings')">
+        <span class="icon">⚙️</span> Settings
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="logout-btn" onclick="doLogout()">
+        <span>🚪</span> Logout
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT — সব page এখানে load হবে -->
+  <main class="main" id="mainContent"></main>
+</div>
+
+<!-- ============================================================
+     NOTE EDITOR MODAL — note লেখার popup
+============================================================ -->
+<div class="modal-overlay" id="noteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="noteModalTitle">New Note</span>
+      <button class="modal-close" onclick="closeNoteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <input type="text" class="form-input" id="noteTitle" placeholder="Note title..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Content</label>
+        <textarea class="form-textarea" id="noteContent" placeholder="Write your thoughts..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mood / Category</label>
+          <select class="form-select" id="noteMood">
+            <option value="📖 Study">📖 Study</option>
+            <option value="💭 Thoughts">💭 Thoughts</option>
+            <option value="🎯 Goals">🎯 Goals</option>
+            <option value="😊 Happy">😊 Happy</option>
+            <option value="😔 Low">😔 Low</option>
+            <option value="💡 Idea">💡 Idea</option>
+            <option value="📌 Important">📌 Important</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="noteDate"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn-add" onclick="saveNote()">💾 Save Note</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TEAM MEMBER MODAL — team member add করার popup
+============================================================ -->
+<div class="modal-overlay" id="memberModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Team Member</span>
+      <button class="modal-close" onclick="closeMemberModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="memberName" placeholder="Name"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Student ID</label>
+          <input type="text" class="form-input" id="memberId" placeholder="2024-1-XX-XXX"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" class="form-input" id="memberPhone" placeholder="01XXXXXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="memberEmail" placeholder="email@ewubd.edu"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select class="form-select" id="memberRole">
+            <option>Leader</option>
+            <option>Developer</option>
+            <option>Designer</option>
+            <option>Researcher</option>
+            <option>Writer</option>
+            <option>Member</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Skills</label>
+          <input type="text" class="form-input" id="memberSkills" placeholder="Java, Python..."/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="memberNotes" placeholder="Any notes about this member..." style="min-height:80px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeMemberModal()">Cancel</button>
+      <button class="btn-add" onclick="saveMember()">➕ Add Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PROJECT MODAL
+============================================================ -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Project / Term Paper</span>
+      <button class="modal-close" onclick="closeProjectModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Project Title</label>
+        <input type="text" class="form-input" id="projTitle" placeholder="Title"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Course Name</label>
+          <input type="text" class="form-input" id="projCourse" placeholder="CSE101"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Teacher Name</label>
+          <input type="text" class="form-input" id="projTeacher" placeholder="Sir/Ma'am name"/>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input type="date" class="form-input" id="projDeadline"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-select" id="projType">
+            <option>Term Paper</option>
+            <option>Programming Project</option>
+            <option>Presentation</option>
+            <option>Research Paper</option>
+            <option>Team Submission</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="projStatus">
+          <option>Ongoing</option>
+          <option>Done</option>
+          <option>Pending</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">References / Notes</label>
+        <textarea class="form-textarea" id="projNotes" placeholder="References, notes..." style="min-height:80px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeProjectModal()">Cancel</button>
+      <button class="btn-add" onclick="saveProject()">➕ Add Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TASK MODAL
+============================================================ -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Task</span>
+      <button class="modal-close" onclick="closeTaskModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Task Title</label>
+        <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Due Date</label>
+          <input type="date" class="form-input" id="taskDue"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="taskPriority">
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn-add" onclick="saveTask()">➕ Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SUBJECT MODAL — study hub এ subject add করার popup
+============================================================ -->
+<div class="modal-overlay" id="subjectModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Subject</span>
+      <button class="modal-close" onclick="document.getElementById('subjectModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Subject Name</label>
+        <input type="text" class="form-input" id="subjectName" placeholder="e.g. CSE101 - Intro to Programming"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Emoji Icon</label>
+          <input type="text" class="form-input" id="subjectEmoji" placeholder="💻" maxlength="2"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (comma separated)</label>
+          <input type="text" class="form-input" id="subjectTags" placeholder="Java, OOP"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="document.getElementById('subjectModal').classList.remove('open')">Cancel</button>
+      <button class="btn-add" onclick="saveSubject()">➕ Add Subject</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// --- 1. NOTUN CONFIGURATION (47edb) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBLwfEJ3qarqyhZGaCJ5KYAkPOfEV3Erws",
+  authDomain: "my-universe-47edb.firebaseapp.com",
+  projectId: "my-universe-47edb",
+  storageBucket: "my-universe-47edb.firebasestorage.app", // Notun storage link
+  messagingSenderId: "140252911441",
+  appId: "1:140252911441:web:7338bf658fc76136882570",
+  measurementId: "G-R80LQ778P0"
+};
+
+// --- 2. INITIALIZATION ---
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+// --- 3. LOGIN LOGIC ---
+window.adminLogin = async (email, password) => {
+  try {
+    await firebase.auth().signInWithEmailAndPassword(email, password);
+    alert("Welcome Sabiha! Admin Access Granted.");
+    console.log("✅ Success! Logged in.");
+  } catch (e) {
+    alert("Access Denied: " + e.message);
+  }
+};
+// ==========================================
+// 👇 EI NOTUN CODE-TUKU EKHANE BOSHABE 👇
+// ==========================================
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        console.log("Welcome back! Auto-login success.");
+        // Login screen lukiye main app dekhano
+        if (document.getElementById('login-screen')) {
+            document.getElementById('login-screen').classList.add('hidden');
+        }
+        showApp(); 
+    } else {
+        console.log("No user logged in.");
+    }
+});
+// ==========================================
+// --- 4. REAL-TIME DATA ---
+db.collection('notes').orderBy('date', 'desc').onSnapshot(snapshot => {
+  const notesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  renderNotes(notesList);
+}, (error) => {
+  console.log("Firebase error:", error.message);
+});
+// ================================================================
+// DATA STORE
+// সব data এখানে localStorage এ save হয়
+// Browser বন্ধ করলেও data থাকবে
+// ================================================================
+
+// localStorage থেকে data পড়া, না থাকলে default value দেওয়া
+let notes    = JSON.parse(localStorage.getItem('univ_notes')    || '[]');
+let members  = JSON.parse(localStorage.getItem('univ_members')  || '[]');
+let projects = JSON.parse(localStorage.getItem('univ_projects') || '[]');
+let tasks    = JSON.parse(localStorage.getItem('univ_tasks')    || '[]');
+let subjects = JSON.parse(localStorage.getItem('univ_subjects') || '[]');
+
+// Data save করার helper functions
+function saveNotes()    { localStorage.setItem('univ_notes',    JSON.stringify(notes));    }
+function saveMembers()  { localStorage.setItem('univ_members',  JSON.stringify(members));  }
+function saveProjects() { localStorage.setItem('univ_projects', JSON.stringify(projects)); }
+function saveTasks()    { localStorage.setItem('univ_tasks',    JSON.stringify(tasks));    }
+function saveSubjects() { localStorage.setItem('univ_subjects', JSON.stringify(subjects)); }
+
+// ================================================================
+// AUTH — login / logout system
+// ================================================================
+
+// ⚠️ এখানে তোমার username আর password বদলাও!
+const CREDENTIALS = { username: 'sabiha', password: 'sabiha123' };
+
+// Page load হলে check করো — আগে login ছিল কিনা (remember me)
+window.onload = function() {
+  const saved = localStorage.getItem('univ_loggedIn');
+  if (saved === 'true') {
+    showApp(); // সরাসরি app দেখাও
+  }
+  // আজকের date calendar input এ set করা
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('noteDate').value = today;
+  document.getElementById('taskDue').value  = today;
+};
+
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim(); // Firebase Email
+  const pass = document.getElementById('loginPass').value;        // Firebase Password
+  const remember = document.getElementById('rememberMe').checked;
+  const errorMsg = document.getElementById('loginError');
+
+  try {
+    // Firebase Authentication trigger kora
+    await firebase.auth().signInWithEmailAndPassword(user, pass);
+    
+    // Login hole storage-e save kora (optional)
+    if (remember) localStorage.setItem('univ_loggedIn', 'true');
+    
+    // Website-er bhetore niye jaoa
+    showApp(); 
+    alert("Welcome back, Sabiha!");
+  } catch (error) {
+    // Vul hole error dekhano
+    errorMsg.style.display = 'block';
+    errorMsg.innerText = "Error: " + error.message;
+    document.getElementById('loginPass').value = '';
+  }
+}
+
+function showApp() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  showPage('dashboard'); // Login এর পরে dashboard দেখাও
+}
+
+function doLogout() {
+  localStorage.removeItem('univ_loggedIn');
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// ================================================================
+// NAVIGATION — page switching
+// ================================================================
+
+function showPage(page) {
+  // সব nav item থেকে active class সরাও
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  // যে button click হলো সেটায় active দাও
+  event && event.currentTarget && event.currentTarget.classList.add('active');
+
+  // Page অনুযায়ী content render করো
+  const content = document.getElementById('mainContent');
+  const renders = {
+    dashboard: renderDashboard,
+    notes:     renderNotes,
+    studyhub:  renderStudyHub,
+    projects:  renderProjects,
+    team:      renderTeam,
+    calendar:  renderCalendar,
+    vault:     renderVault,
+    settings:  renderSettings,
+    search:    renderSearch,
+  };
+
+  if (renders[page]) {
+    content.innerHTML = '';
+    renders[page]();
+  }
+
+  // Mobile এ sidebar বন্ধ করো
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ================================================================
+// DASHBOARD — মূল dashboard render করা
+// ================================================================
+function renderDashboard() {
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-BD', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  const pending = tasks.filter(t => !t.done).length;
+  const due = tasks.filter(t => !t.done && t.due === today.toISOString().split('T')[0]).length;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">Welcome back, Sabiha ✦</div>
+        <div class="page-sub">${todayStr}</div>
+      </div>
+
+      <!-- Quick stats — 4টা stat card -->
+      <div class="dashboard-grid">
+        <div class="stat-card purple" onclick="showPage('notes')">
+          <div class="stat-icon">📝</div>
+          <div class="stat-value">${notes.length}</div>
+          <div class="stat-label">Notes & Journals</div>
+        </div>
+        <div class="stat-card pink" onclick="showPage('projects')">
+          <div class="stat-icon">🎓</div>
+          <div class="stat-value">${projects.length}</div>
+          <div class="stat-label">University Projects</div>
+        </div>
+        <div class="stat-card teal" onclick="showPage('team')">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value">${members.length}</div>
+          <div class="stat-label">Team Members</div>
+        </div>
+        <div class="stat-card orange" onclick="showPage('calendar')">
+          <div class="stat-icon">📅</div>
+          <div class="stat-value">${pending}</div>
+          <div class="stat-label">Pending Tasks</div>
+        </div>
+      </div>
+
+      <!-- দুই কলামে recent activity আর quick actions -->
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:20px">
+        <div class="card">
+          <div class="section-header">
+            <div class="section-header-title">📌 Recent Activity</div>
+          </div>
+          <div class="recent-list">
+            ${[...notes].reverse().slice(0,3).map(n => `
+              <div class="recent-item" onclick="showPage('notes')">
+                <div class="recent-dot" style="background:var(--accent)"></div>
+                <div class="recent-text">📝 ${n.title}</div>
+                <div class="recent-time">${n.date}</div>
+              </div>`).join('') || '<div class="empty-state"><p>No activity yet. Start by adding a note!</p></div>'}
+            ${[...tasks].reverse().slice(0,2).map(t => `
+              <div class="recent-item" onclick="showPage('calendar')">
+                <div class="recent-dot" style="background:var(--accent2)"></div>
+                <div class="recent-text">📅 ${t.title}</div>
+                <div class="recent-time">${t.due}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="section-header-title" style="margin-bottom:14px">⚡ Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn-add" style="justify-content:center" onclick="showPage('notes');setTimeout(openNoteModal,100)">➕ New Note</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent2),#c44d8b)" onclick="showPage('calendar');setTimeout(openTaskModal,100)">📅 Add Task</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent3),#2ba87a)" onclick="showPage('projects');setTimeout(openProjectModal,100)">🎓 New Project</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,#ffaa6a,#e07a30)" onclick="showPage('team');setTimeout(openMemberModal,100)">👤 Add Member</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ================================================================
+// NOTES — notes & journal section
+// ================================================================
+function renderNotes() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">📝 Notes & Journal</div>
+        <div class="page-sub">Your thoughts, plans, and daily entries</div>
+      </div>
+      <div class="notes-toolbar">
+        <div class="search-box">
+          <span>🔎</span>
+          <input type="text" placeholder="Search notes..." oninput="filterNotes(this.value)" id="noteSearch"/>
+        </div>
+        <button class="btn-add" onclick="openNoteModal()">➕ New Note</button>
+      </div>
+      <div class="notes-grid" id="notesGrid"></div>
+    </div>`;
+  renderNoteCards(notes);
+}
+db.collection("notes").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
+  notes = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+  
+  // Jodi ekhon Notes page open thake, tobei card gulo update korbo
+  if (document.getElementById('notesGrid')) {
+     renderNoteCards(notes);
+  }
+});
+
+function renderNoteCards(list) {
+  const grid = document.getElementById('notesGrid');
+  if (!grid) return;
+  if (list.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">📝</div>
+      <p>No notes yet. Click "New Note" to start!</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map((n, i) => `
+    <div class="note-card" onclick="openNoteEdit(${i})">
+      <div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:16px;color:var(--text2)"
+           onclick="event.stopPropagation();deleteNote(${notes.indexOf(n)})">🗑️</div>
+      <div class="note-card-title">${n.title}</div>
+      <div class="note-card-preview">${n.content.substring(0,100)}${n.content.length>100?'...':''}</div>
+      <div class="note-card-footer">
+        <span class="mood-tag">${n.mood}</span>
+        <span style="font-family:var(--mono)">${n.date}</span>
+      </div>
+    </div>`).join('');
+}
+
+function filterNotes(q) {
+  const filtered = notes.filter(n =>
+    n.title.toLowerCase().includes(q.toLowerCase()) ||
+    n.content.toLowerCase().includes(q.toLowerCase())
+  );
+  renderNoteCards(filtered);
+}
+
+let editingNoteIndex = -1;
+
+function openNoteModal() {
+  editingNoteIndex = -1;
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteContent').value = '';
+  document.getElementById('noteDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('noteModalTitle').textContent = 'New Note';
+  document.getElementById('noteModal').classList.add('open');
+}
+
+function openNoteEdit(i) {
+  editingNoteIndex = i;
+  const n = notes[i];
+  document.getElementById('noteTitle').value   = n.title;
+  document.getElementById('noteContent').value = n.content;
+  document.getElementById('noteMood').value    = n.mood;
+  document.getElementById('noteDate').value    = n.date;
+  document.getElementById('noteModalTitle').textContent = 'Edit Note';
+  document.getElementById('noteModal').classList.add('open');
+}
+
+function closeNoteModal() {
+  document.getElementById('noteModal').classList.remove('open');
+}
+
+function saveNote() {
+  const title   = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  const mood    = document.getElementById('noteMood').value;
+  const date    = document.getElementById('noteDate').value;
+
+  if (!title) { alert('Please enter a title!'); return; }
+
+  const noteObj = { title, content, mood, date, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+
+  if (editingNoteIndex >= 0) {
+    // Edit mode e thakle shei specific document update hobe
+    // Note: Edit logic-er jonno doc ID dorkar hoy, niche ami shohoj bhabe dilaam:
+    const docId = notes[editingNoteIndex].id; 
+    db.collection("notes").doc(docId).update(noteObj).then(() => {
+      console.log("Updated in Cloud!");
+    });
+  } else {
+    // Notun note Firebase-e save hobe
+    db.collection("notes").add(noteObj).then(() => {
+      console.log("Saved to Cloud!");
+    });
+  }
+
+  closeNoteModal();
+  // renderNotes() ekhon ar dorkar hobe na jodi apni onSnapshot use koren, 
+  // karon Firebase nijei auto update kore dibe screen.
+}
+
+function deleteNote(i) {
+  if (confirm('Delete this note?')) {
+    notes.splice(i, 1);
+    saveNotes();
+    renderNotes();
+  }
+}
+
+// ================================================================
+// STUDY HUB
+// ================================================================
+function renderStudyHub() {
+  const defaultSubjects = subjects.length ? subjects : [];
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">📚 Study Hub</div>
+        <div class="page-sub">All your subjects and study materials</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
+        <button class="btn-add" onclick="document.getElementById('subjectModal').classList.add('open')">➕ Add Subject</button>
+      </div>
+      <div class="subject-grid" id="subjectGrid"></div>
+    </div>`;
+  renderSubjectCards();
+}
+
+function renderSubjectCards() {
+  const grid = document.getElementById('subjectGrid');
+  if (!grid) return;
+  if (subjects.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">📚</div>
+      <p>No subjects yet. Add your first subject!</p></div>`;
+    return;
+  }
+  grid.innerHTML = subjects.map((s, i) => `
+    <div class="subject-card">
+      <div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:14px;color:var(--text2)"
+           onclick="deleteSubject(${i})">🗑️</div>
+      <div class="subject-emoji">${s.emoji || '📖'}</div>
+      <div class="subject-name">${s.name}</div>
+      <div class="subject-count">${s.notes || 0} notes</div>
+      <div class="subject-tags">
+        ${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function saveSubject() {
+  const name = document.getElementById('subjectName').value.trim();
+  const emoji = document.getElementById('subjectEmoji').value.trim() || '📖';
+  const tags = document.getElementById('subjectTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  if (!name) { alert('Enter subject name!'); return; }
+  subjects.push({ name, emoji, tags, notes: 0 });
+  saveSubjects();
+  document.getElementById('subjectModal').classList.remove('open');
+  document.getElementById('subjectName').value = '';
+  document.getElementById('subjectEmoji').value = '';
+  document.getElementById('subjectTags').value = '';
+  renderSubjectCards();
+}
+
+function deleteSubject(i) {
+  if (confirm('Delete this subject?')) { subjects.splice(i,1); saveSubjects(); renderSubjectCards(); }
+}
+
+// ================================================================
+// UNIVERSITY PROJECTS
+// ================================================================
+function renderProjects() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">🎓 University Projects</div>
+        <div class="page-sub">Term papers, programming projects, presentations</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
+        <button class="btn-add" onclick="openProjectModal()">➕ Add Project</button>
+      </div>
+      <div class="projects-list" id="projectsList"></div>
+    </div>`;
+  renderProjectsList();
+}
+
+function renderProjectsList() {
+  const list = document.getElementById('projectsList');
+  if (!list) return;
+  const typeIcons = { 'Term Paper':'📄', 'Programming Project':'💻', 'Presentation':'📊', 'Research Paper':'🔬', 'Team Submission':'👥' };
+  const statusClass = { 'Ongoing':'badge-ongoing', 'Done':'badge-done', 'Pending':'badge-pending' };
+
+  if (projects.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎓</div><p>No projects yet!</p></div>`;
+    return;
+  }
+  list.innerHTML = projects.map((p, i) => `
+    <div class="project-item">
+      <div class="project-icon">${typeIcons[p.type]||'📁'}</div>
+      <div class="project-info">
+        <div class="project-name">${p.title}</div>
+        <div class="project-meta">${p.course} • ${p.teacher} • Due: ${p.deadline||'—'}</div>
+      </div>
+      <span class="project-badge ${statusClass[p.status]||'badge-pending'}">${p.status}</span>
+      <span style="cursor:pointer;color:var(--text2);margin-left:8px" onclick="deleteProject(${i})">🗑️</span>
+    </div>`).join('');
+}
+
+function openProjectModal() {
+  document.getElementById('projectModal').classList.add('open');
+}
+function closeProjectModal() {
+  document.getElementById('projectModal').classList.remove('open');
+}
+function saveProject() {
+  const title = document.getElementById('projTitle').value.trim();
+  if (!title) { alert('Enter project title!'); return; }
+  projects.unshift({
+    title, course: document.getElementById('projCourse').value,
+    teacher: document.getElementById('projTeacher').value,
+    deadline: document.getElementById('projDeadline').value,
+    type: document.getElementById('projType').value,
+    status: document.getElementById('projStatus').value,
+    notes: document.getElementById('projNotes').value,
+  });
+  saveProjects();
+  closeProjectModal();
+  renderProjectsList();
+}
+function deleteProject(i) {
+  if (confirm('Delete this project?')) { projects.splice(i,1); saveProjects(); renderProjectsList(); }
+}
+
+// ================================================================
+// TEAM MANAGER
+// ================================================================
+function renderTeam() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">👥 Team Manager</div>
+        <div class="page-sub">Your team members and their info</div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
+        <button class="btn-add" onclick="openMemberModal()">➕ Add Member</button>
+      </div>
+      <div class="team-grid" id="teamGrid"></div>
+    </div>`;
+  renderTeamCards();
+}
+
+function renderTeamCards() {
+  const grid = document.getElementById('teamGrid');
+  if (!grid) return;
+  if (members.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">👥</div><p>No team members yet!</p></div>`;
+    return;
+  }
+  grid.innerHTML = members.map((m, i) => `
+    <div class="member-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="member-avatar">${m.name.charAt(0).toUpperCase()}</div>
+        <span style="cursor:pointer;color:var(--text2)" onclick="deleteMember(${i})">🗑️</span>
+      </div>
+      <div class="member-name">${m.name}</div>
+      <div class="member-id">${m.id}</div>
+      <div class="member-info">
+        <div class="member-info-row"><span>📞</span><span>${m.phone||'—'}</span></div>
+        <div class="member-info-row"><span>✉️</span><span>${m.email||'—'}</span></div>
+        ${m.skills?`<div class="member-info-row"><span>💡</span><span>${m.skills}</span></div>`:''}
+      </div>
+      <span class="member-role">${m.role}</span>
+    </div>`).join('');
+}
+
+function openMemberModal() { document.getElementById('memberModal').classList.add('open'); }
+function closeMemberModal() { document.getElementById('memberModal').classList.remove('open'); }
+function saveMember() {
+  const name = document.getElementById('memberName').value.trim();
+  if (!name) { alert('Enter member name!'); return; }
+  members.push({
+    name, id: document.getElementById('memberId').value,
+    phone: document.getElementById('memberPhone').value,
+    email: document.getElementById('memberEmail').value,
+    role: document.getElementById('memberRole').value,
+    skills: document.getElementById('memberSkills').value,
+    notes: document.getElementById('memberNotes').value,
+  });
+  saveMembers();
+  closeMemberModal();
+  ['memberName','memberId','memberPhone','memberEmail','memberSkills','memberNotes']
+    .forEach(id => document.getElementById(id).value = '');
+  renderTeamCards();
+}
+function deleteMember(i) {
+  if (confirm('Remove this member?')) { members.splice(i,1); saveMembers(); renderTeamCards(); }
+}
+
+// ================================================================
+// CALENDAR & TASKS
+// ================================================================
+function renderCalendar() {
+  const now = new Date();
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">📅 Calendar & Tasks</div>
+        <div class="page-sub">Your schedule, deadlines, and daily goals</div>
+      </div>
+      <div class="calendar-layout">
+        <!-- বাম পাশে tasks list -->
+        <div>
+          <div class="section-header" style="margin-bottom:16px">
+            <div class="section-header-title">📋 Tasks</div>
+            <button class="btn-add" onclick="openTaskModal()">➕ Add Task</button>
+          </div>
+          <div class="tasks-list" id="tasksList"></div>
+        </div>
+        <!-- ডান পাশে calendar -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-weight:600">${now.toLocaleString('en',{month:'long',year:'numeric'})}</div>
+          </div>
+          <div class="cal-grid">
+            ${['S','M','T','W','T','F','S'].map(d=>`<div class="cal-day-name">${d}</div>`).join('')}
+            ${renderCalDays(now)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  renderTasksList();
+}
+
+function renderCalDays(now) {
+  const year = now.getFullYear(), month = now.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const today = now.getDate();
+  let html = '';
+  // মাসের শুরুতে ফাঁকা cells
+  for (let i=0; i<firstDay; i++) html += '<div class="cal-day other-month"></div>';
+  for (let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const hasTask = tasks.some(t => t.due === dateStr);
+    html += `<div class="cal-day ${d===today?'today':''} ${hasTask?'has-event':''}">${d}</div>`;
+  }
+  return html;
+}
+
+function renderTasksList() {
+  const list = document.getElementById('tasksList');
+  if (!list) return;
+  if (tasks.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>No tasks yet!</p></div>`;
+    return;
+  }
+  list.innerHTML = tasks.map((t, i) => `
+    <div class="task-item">
+      <div class="task-check ${t.done?'checked':''}" onclick="toggleTask(${i})"></div>
+      <div class="task-content">
+        <div class="task-title ${t.done?'done':''}">${t.title}</div>
+        <div class="task-due">Due: ${t.due||'—'}</div>
+      </div>
+      <span class="task-priority priority-${t.priority}">${t.priority}</span>
+      <span style="cursor:pointer;color:var(--text2);margin-left:8px" onclick="deleteTask(${i})">🗑️</span>
+    </div>`).join('');
+}
+
+function openTaskModal()  { document.getElementById('taskModal').classList.add('open'); }
+function closeTaskModal() { document.getElementById('taskModal').classList.remove('open'); }
+function saveTask() {
+  const title = document.getElementById('taskTitle').value.trim();
+  if (!title) { alert('Enter task title!'); return; }
+  tasks.unshift({
+    title, due: document.getElementById('taskDue').value,
+    priority: document.getElementById('taskPriority').value, done: false
+  });
+  saveTasks();
+  closeTaskModal();
+  document.getElementById('taskTitle').value = '';
+  renderTasksList();
+}
+function toggleTask(i) {
+  tasks[i].done = !tasks[i].done;
+  saveTasks();
+  renderTasksList();
+}
+function deleteTask(i) {
+  tasks.splice(i,1); saveTasks(); renderTasksList();
+}
+
+// ================================================================
+// PERSONAL VAULT
+// ================================================================
+function renderVault() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">🔒 Personal Vault</div>
+        <div class="page-sub">Your private memories and files</div>
+      </div>
+
+      <!-- Folders -->
+      <div class="vault-folders">
+        <div class="folder-item"><div class="folder-icon">📸</div><div class="folder-name">Photos</div><div class="folder-count">Coming soon</div></div>
+        <div class="folder-item"><div class="folder-icon">🎬</div><div class="folder-name">Videos</div><div class="folder-count">Coming soon</div></div>
+        <div class="folder-item"><div class="folder-icon">🎵</div><div class="folder-name">Audio</div><div class="folder-count">Coming soon</div></div>
+        <div class="folder-item"><div class="folder-icon">📄</div><div class="folder-name">Documents</div><div class="folder-count">Coming soon</div></div>
+        <div class="folder-item"><div class="folder-icon">💝</div><div class="folder-name">Memories</div><div class="folder-count">Coming soon</div></div>
+        <div class="folder-item"><div class="folder-icon">🔐</div><div class="folder-name">Private</div><div class="folder-count">Coming soon</div></div>
+      </div>
+
+      <!-- Info card -->
+      <div class="card" style="border-color:rgba(124,106,255,0.3);background:rgba(124,106,255,0.05)">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="font-size:24px">ℹ️</span>
+          <div>
+            <div style="font-weight:600;margin-bottom:4px">File storage coming in V2!</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6">
+              Real photo/video/file upload needs Firebase or Cloudinary (free). 
+              V2 তে এটা যোগ করা হবে। এখন Google Drive এ files রেখে link এখানে note এ save করতে পারো।
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+function renderSettings() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">⚙️ Settings</div>
+        <div class="page-sub">Customize your universe</div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">🔐 Security</div>
+        <div class="change-pass-form">
+          <div class="form-group">
+            <label class="form-label">New Username</label>
+            <input type="text" class="form-input" id="newUser" placeholder="New username"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-input" id="newPass" placeholder="New password"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Password (to confirm)</label>
+            <input type="password" class="form-input" id="confirmPass" placeholder="Current password"/>
+          </div>
+          <button class="btn-add" onclick="changeCredentials()" style="margin-top:4px">🔒 Update Credentials</button>
+          <div id="passMsg" style="font-size:13px;margin-top:10px;display:none"></div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">💾 Data Management</div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <div class="settings-row-label">Export All Data</div>
+            <div class="settings-row-desc">Download everything as JSON backup</div>
+          </div>
+          <button class="btn-add" onclick="exportData()" style="white-space:nowrap">📥 Export</button>
+        </div>
+        <div class="settings-row" style="border-color:rgba(255,107,107,0.2)">
+          <div class="settings-row-info">
+            <div class="settings-row-label" style="color:#ff6b6b">Clear All Data</div>
+            <div class="settings-row-desc">Delete everything permanently</div>
+          </div>
+          <button onclick="clearAllData()" style="padding:8px 16px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;color:#ff6b6b;cursor:pointer;font-family:var(--font)">🗑️ Clear</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-title">ℹ️ About</div>
+        <div class="card">
+          <div style="font-size:13px;color:var(--text2);line-height:1.8">
+            <div>🌌 <strong>My Universe v1.0</strong></div>
+            <div>Built for Sabiha — East West University</div>
+            <div style="margin-top:8px">Data stored in your browser (localStorage)</div>
+            <div>V2 will include real file upload & cloud sync</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Password/username পরিবর্তন করার function
+function changeCredentials() {
+  const newUser = document.getElementById('newUser').value.trim();
+  const newPass = document.getElementById('newPass').value;
+  const confirm = document.getElementById('confirmPass').value;
+  const msg = document.getElementById('passMsg');
+
+  if (confirm !== CREDENTIALS.password) {
+    msg.style.color = '#ff6b6b'; msg.textContent = '❌ Current password is wrong!';
+    msg.style.display = 'block'; return;
+  }
+  if (newUser) CREDENTIALS.username = newUser;
+  if (newPass) CREDENTIALS.password = newPass;
+  msg.style.color = 'var(--accent3)'; msg.textContent = '✅ Updated! (Note: resets on page reload — V2 এ permanent হবে)';
+  msg.style.display = 'block';
+}
+
+// সব data export করার function
+function exportData() {
+  const data = { notes, members, projects, tasks, subjects, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'my-universe-backup.json';
+  a.click();
+}
+
+function clearAllData() {
+  if (confirm('Are you sure? This will DELETE everything!')) {
+    if (confirm('Really sure? Cannot undo!')) {
+      ['univ_notes','univ_members','univ_projects','univ_tasks','univ_subjects']
+        .forEach(k => localStorage.removeItem(k));
+      notes=[]; members=[]; projects=[]; tasks=[]; subjects=[];
+      renderSettings();
+      alert('All data cleared!');
+    }
+  }
+}
+
+// ================================================================
+// SEARCH
+// ================================================================
+function renderSearch() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">🔎 Search</div>
+        <div class="page-sub">Find anything instantly</div>
+      </div>
+      <div class="search-big">
+        <span style="font-size:20px">🔎</span>
+        <input type="text" placeholder="Search notes, projects, members..." oninput="doSearch(this.value)" id="mainSearch" autofocus/>
+      </div>
+      <div class="search-results" id="searchResults">
+        <div class="empty-state"><div class="empty-icon">🔎</div><p>Type to search everything...</p></div>
+      </div>
+    </div>`;
+}
+
+function doSearch(q) {
+  const results = document.getElementById('searchResults');
+  if (!q.trim()) {
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">🔎</div><p>Type to search...</p></div>`;
+    return;
+  }
+  const ql = q.toLowerCase();
+  const found = [];
+
+  // Notes এ search
+  notes.forEach(n => {
+    if (n.title.toLowerCase().includes(ql) || n.content.toLowerCase().includes(ql))
+      found.push({ icon:'📝', title: n.title, meta: `Note • ${n.date}`, page:'notes' });
+  });
+  // Projects এ search
+  projects.forEach(p => {
+    if (p.title.toLowerCase().includes(ql) || (p.course||'').toLowerCase().includes(ql))
+      found.push({ icon:'🎓', title: p.title, meta: `Project • ${p.course}`, page:'projects' });
+  });
+  // Members এ search
+  members.forEach(m => {
+    if (m.name.toLowerCase().includes(ql) || (m.id||'').toLowerCase().includes(ql))
+      found.push({ icon:'👤', title: m.name, meta: `Team Member • ${m.id}`, page:'team' });
+  });
+  // Tasks এ search
+  tasks.forEach(t => {
+    if (t.title.toLowerCase().includes(ql))
+      found.push({ icon:'📅', title: t.title, meta: `Task • Due: ${t.due}`, page:'calendar' });
+  });
+
+  if (found.length === 0) {
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">😔</div><p>Nothing found for "${q}"</p></div>`;
+    return;
+  }
+  results.innerHTML = found.map(r => `
+    <div class="search-result-item" onclick="showPage('${r.page}')">
+      <div class="search-result-title">${r.icon} ${r.title}</div>
+      <div class="search-result-meta">${r.meta}</div>
+    </div>`).join('');
+}
+
+</script>
+</body>
+</html>
