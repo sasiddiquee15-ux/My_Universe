@@ -905,52 +905,53 @@
 
   <!-- SIDEBAR — বাম পাশের menu -->
   <nav class="sidebar" id="sidebar">
-    <div class="sidebar-header">
+    <div class="sidebar-header" onclick="showPage('profile',null)" style="cursor:pointer;transition:background 0.2s" onmouseover="this.style.background='rgba(124,106,255,0.08)'" onmouseout="this.style.background=''">
       <div class="sidebar-logo">🌌 My Universe</div>
       <div class="sidebar-user" id="sidebarUser">Welcome, Sabiha</div>
+      <div style="font-size:10px;color:var(--accent);margin-top:4px;letter-spacing:0.05em">tap to view profile →</div>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Main</div>
       <!-- প্রতিটা nav-item এ onclick দিয়ে page switch হয় -->
-      <div class="nav-item active" onclick="showPage('dashboard')">
+      <div class="nav-item active" onclick="showPage('dashboard',this)">
         <span class="icon">🏠</span> Dashboard
        
       </div>
-      <div class="nav-item" onclick="showPage('search')">
+      <div class="nav-item" onclick="showPage('search',this)">
         <span class="icon">🔎</span> Search
       </div>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Study</div>
-      <div class="nav-item" onclick="showPage('studyhub')">
+      <div class="nav-item" onclick="showPage('studyhub',this)">
         <span class="icon">📚</span> Study Hub
       </div>
-      <div class="nav-item" onclick="showPage('notes')">
+      <div class="nav-item" onclick="showPage('notes',this)">
         <span class="icon">📝</span> Notes & Journal
       </div>
-      <div class="nav-item" onclick="showPage('projects')">
+      <div class="nav-item" onclick="showPage('projects',this)">
         <span class="icon">🎓</span> University Projects
       </div>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">Personal</div>
-      <div class="nav-item" onclick="showPage('vault')">
+      <div class="nav-item" onclick="showPage('vault',this)">
         <span class="icon">🔒</span> Personal Vault
       </div>
-      <div class="nav-item" onclick="showPage('team')">
+      <div class="nav-item" onclick="showPage('team',this)">
         <span class="icon">👥</span> Team Manager
       </div>
-      <div class="nav-item" onclick="showPage('calendar')">
+      <div class="nav-item" onclick="showPage('calendar',this)">
         <span class="icon">📅</span> Calendar & Tasks
       </div>
     </div>
 
     <div class="nav-section">
       <div class="nav-label">System</div>
-      <div class="nav-item" onclick="showPage('settings')">
+      <div class="nav-item" onclick="showPage('settings',this)">
         <span class="icon">⚙️</span> Settings
       </div>
     </div>
@@ -1378,7 +1379,7 @@ auth.onAuthStateChanged(user => {
   document.getElementById('app').classList.add('visible');
 
   // Dashboard দেখাও
-  showPage('dashboard');
+  showPage('dashboard', null);
 
   // Admin/Public mode apply করো
   setTimeout(applyAdminMode, 100);
@@ -1463,14 +1464,12 @@ function changeCredentials() {
 
 // ================================================================
 
-function showPage(page) {
+function showPage(page, el) {
   // সব nav item থেকে active class সরাও
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  // যে button click হলো সেটায় active দাও
-  event && event.currentTarget && event.currentTarget.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (el) el.classList.add('active');
 
   // Page অনুযায়ী content render করো
-  const content = document.getElementById('mainContent');
   const renders = {
     dashboard: renderDashboard,
     notes:     renderNotes,
@@ -1481,15 +1480,18 @@ function showPage(page) {
     vault:     renderVault,
     settings:  renderSettings,
     search:    renderSearch,
+    profile:   renderProfile,
   };
 
-  if (renders[page]) {
-    content.innerHTML = '';
-    renders[page]();
+  const mc = document.getElementById('mainContent');
+  if (renders[page] && mc) {
+    mc.innerHTML = '';
+    try { renders[page](); } catch(e) { console.error('Page render error:', e); mc.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Error loading page. Check console.</p></div>'; }
   }
 
   // Mobile এ sidebar বন্ধ করো
-  document.getElementById('sidebar').classList.remove('open');
+  const sb = document.getElementById('sidebar');
+  if (sb) sb.classList.remove('open');
 }
 
 function toggleSidebar() {
@@ -1514,22 +1516,22 @@ function renderDashboard() {
 
       <!-- Quick stats — 4টা stat card -->
       <div class="dashboard-grid">
-        <div class="stat-card purple" onclick="showPage('notes')">
+        <div class="stat-card purple" onclick="showPage('notes',this)">
           <div class="stat-icon">📝</div>
           <div class="stat-value">${notes.length}</div>
           <div class="stat-label">Notes & Journals</div>
         </div>
-        <div class="stat-card pink" onclick="showPage('projects')">
+        <div class="stat-card pink" onclick="showPage('projects',this)">
           <div class="stat-icon">🎓</div>
           <div class="stat-value">${projects.length}</div>
           <div class="stat-label">University Projects</div>
         </div>
-        <div class="stat-card teal" onclick="showPage('team')">
+        <div class="stat-card teal" onclick="showPage('team',this)">
           <div class="stat-icon">👥</div>
           <div class="stat-value">${members.length}</div>
           <div class="stat-label">Team Members</div>
         </div>
-        <div class="stat-card orange" onclick="showPage('calendar')">
+        <div class="stat-card orange" onclick="showPage('calendar',this)">
           <div class="stat-icon">📅</div>
           <div class="stat-value">${pending}</div>
           <div class="stat-label">Pending Tasks</div>
@@ -1544,13 +1546,13 @@ function renderDashboard() {
           </div>
           <div class="recent-list">
             ${[...notes].reverse().slice(0,3).map(n => `
-              <div class="recent-item" onclick="showPage('notes')">
+              <div class="recent-item" onclick="showPage('notes',this)">
                 <div class="recent-dot" style="background:var(--accent)"></div>
                 <div class="recent-text">📝 ${n.title}</div>
                 <div class="recent-time">${n.date}</div>
               </div>`).join('') || '<div class="empty-state"><p>No activity yet. Start by adding a note!</p></div>'}
             ${[...tasks].reverse().slice(0,2).map(t => `
-              <div class="recent-item" onclick="showPage('calendar')">
+              <div class="recent-item" onclick="showPage('calendar',this)">
                 <div class="recent-dot" style="background:var(--accent2)"></div>
                 <div class="recent-text">📅 ${t.title}</div>
                 <div class="recent-time">${t.due}</div>
@@ -1558,14 +1560,14 @@ function renderDashboard() {
           </div>
         </div>
 
-        <!-- Quick actions -->
-        <div class="card">
+        <!-- Quick actions — admin only -->
+        <div class="card admin-only">
           <div class="section-header-title" style="margin-bottom:14px">⚡ Quick Actions</div>
           <div style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn-add" style="justify-content:center" onclick="showPage('notes');setTimeout(openNoteModal,100)">➕ New Note</button>
-            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent2),#c44d8b)" onclick="showPage('calendar');setTimeout(openTaskModal,100)">📅 Add Task</button>
-            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent3),#2ba87a)" onclick="showPage('projects');setTimeout(openProjectModal,100)">🎓 New Project</button>
-            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,#ffaa6a,#e07a30)" onclick="showPage('team');setTimeout(openMemberModal,100)">👤 Add Member</button>
+            <button class="btn-add" style="justify-content:center" onclick="showPage('notes',null);setTimeout(openNoteModal,100)">➕ New Note</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent2),#c44d8b)" onclick="showPage('calendar',null);setTimeout(openTaskModal,100)">📅 Add Task</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,var(--accent3),#2ba87a)" onclick="showPage('projects',null);setTimeout(openProjectModal,100)">🎓 New Project</button>
+            <button class="btn-add" style="justify-content:center;background:linear-gradient(135deg,#ffaa6a,#e07a30)" onclick="showPage('team',null);setTimeout(openMemberModal,100)">👤 Add Member</button>
           </div>
         </div>
       </div>
@@ -2503,13 +2505,12 @@ function applyAdminMode() {
   const authBtn = document.getElementById('authBtn');
   if (authBtn) {
     if (isAdmin) {
-      authBtn.innerHTML = `<div class="logout-btn" onclick="doLogout()">
-        <span>🚪</span> Logout
-      </div>`;
+      const displayName = profileData.name || (currentUser.displayName || currentUser.email.split('@')[0]);
+      document.getElementById('sidebarUser').textContent = '🔑 ' + displayName;
+      authBtn.innerHTML = `<div class="logout-btn" onclick="doLogout()"><span>🚪</span> Logout</div>`;
     } else {
-      authBtn.innerHTML = `<div class="logout-btn" style="color:var(--accent)" onclick="showLoginModal()">
-        <span>🔑</span> Admin Login
-      </div>`;
+      document.getElementById('sidebarUser').textContent = '👁️ Guest View';
+      authBtn.innerHTML = `<div class="logout-btn" style="color:var(--accent)" onclick="showLoginModal()"><span>🔑</span> Admin Login</div>`;
     }
   }
 
@@ -2633,6 +2634,149 @@ function doSearch(q) {
       <div class="search-result-title">${r.icon} ${r.title}</div>
       <div class="search-result-meta">${r.meta}</div>
     </div>`).join('');
+}
+
+
+// ================================================================
+// PROFILE PAGE — sidebar header click করলে দেখাবে
+// ================================================================
+let profileData = JSON.parse(localStorage.getItem('univ_profile') || '{}');
+function saveProfile() { localStorage.setItem('univ_profile', JSON.stringify(profileData)); }
+
+function renderProfile() {
+  const isAdmin = !!currentUser;
+  const p = profileData;
+  const email = currentUser ? currentUser.email : '—';
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div class="page-header">
+        <div class="page-title">👤 My Profile</div>
+        <div class="page-sub">Your personal information</div>
+      </div>
+
+      <!-- Profile Card -->
+      <div class="card" style="max-width:600px;margin-bottom:20px">
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+          <!-- Profile Picture -->
+          <div style="position:relative">
+            <div id="profilePicDisplay" style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;flex-shrink:0;border:3px solid rgba(124,106,255,0.3)">
+              ${p.pic ? `<img src="${p.pic}" style="width:100%;height:100%;object-fit:cover"/>` : (p.name ? p.name.charAt(0).toUpperCase() : '🌌')}
+            </div>
+            ${isAdmin ? `<label style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px" title="Change photo">
+              📷<input type="file" accept="image/*" style="display:none" onchange="uploadProfilePic(this)"/>
+            </label>` : ''}
+          </div>
+
+          <!-- Name + Info -->
+          <div style="flex:1">
+            ${isAdmin ? `<input type="text" class="form-input" id="profileName" value="${p.name||''}" placeholder="Your full name" style="font-size:20px;font-weight:700;margin-bottom:8px"/>` 
+                      : `<div style="font-size:22px;font-weight:700;font-style:italic;margin-bottom:6px">${p.name||'Sabiha'}</div>`}
+            <div style="font-size:13px;color:var(--text2);margin-bottom:4px">✉️ ${email}</div>
+            ${p.university ? `<div style="font-size:13px;color:var(--text2)">🎓 ${p.university}</div>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <!-- Biodata -->
+      <div class="card" style="max-width:600px;margin-bottom:20px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em">📋 Biodata</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          ${isAdmin ? `
+            <div class="form-group">
+              <label class="form-label">University</label>
+              <input type="text" class="form-input" id="profileUniversity" value="${p.university||''}" placeholder="East West University"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Department</label>
+              <input type="text" class="form-input" id="profileDept" value="${p.dept||''}" placeholder="CSE"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Student ID</label>
+              <input type="text" class="form-input" id="profileStudentId" value="${p.studentId||''}" placeholder="2024-1-XX-XXX"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Batch / Semester</label>
+              <input type="text" class="form-input" id="profileBatch" value="${p.batch||''}" placeholder="1st Year, 2nd Semester"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Birthdate</label>
+              <input type="date" class="form-input" id="profileBirth" value="${p.birth||''}"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-input" id="profilePhone" value="${p.phone||''}" placeholder="01XXXXXXXXX"/>
+            </div>
+          ` : `
+            ${p.university ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">UNIVERSITY</div><div style="font-size:14px">${p.university}</div></div>` : ''}
+            ${p.dept ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">DEPARTMENT</div><div style="font-size:14px">${p.dept}</div></div>` : ''}
+            ${p.batch ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">BATCH</div><div style="font-size:14px">${p.batch}</div></div>` : ''}
+            ${p.studentId ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">STUDENT ID</div><div style="font-size:14px;font-family:var(--mono)">${p.studentId}</div></div>` : ''}
+          `}
+        </div>
+        ${p.bio || isAdmin ? `
+          <div class="form-group" style="margin-top:12px;grid-column:1/-1">
+            <label class="form-label">Bio</label>
+            ${isAdmin ? `<textarea class="form-textarea" id="profileBio" placeholder="Tell something about yourself..." style="min-height:80px">${p.bio||''}</textarea>` 
+                      : `<div style="font-size:14px;color:var(--text2);line-height:1.6">${p.bio||''}</div>`}
+          </div>` : ''}
+        ${isAdmin ? `<button class="btn-add" style="margin-top:8px" onclick="saveProfileData()">💾 Save Profile</button>
+          <div id="profileMsg" style="font-size:12px;margin-top:8px;display:none;color:var(--accent3)"></div>` : ''}
+      </div>
+
+      <!-- Login Info — Admin only, hidden by default -->
+      ${isAdmin ? `
+      <div class="card" style="max-width:600px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em">🔐 Login Info</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px">Email: <strong style="color:var(--text)">${email}</strong></div>
+        <button class="btn-ghost" style="font-size:12px" onclick="sendPasswordReset()">📧 Send Password Reset Email</button>
+        <div id="resetMsg" style="font-size:12px;margin-top:8px;display:none"></div>
+      </div>` : ''}
+    </div>`;
+}
+
+function saveProfileData() {
+  profileData.name       = (document.getElementById('profileName')?.value||'').trim();
+  profileData.university = (document.getElementById('profileUniversity')?.value||'').trim();
+  profileData.dept       = (document.getElementById('profileDept')?.value||'').trim();
+  profileData.studentId  = (document.getElementById('profileStudentId')?.value||'').trim();
+  profileData.batch      = (document.getElementById('profileBatch')?.value||'').trim();
+  profileData.birth      = (document.getElementById('profileBirth')?.value||'').trim();
+  profileData.phone      = (document.getElementById('profilePhone')?.value||'').trim();
+  profileData.bio        = (document.getElementById('profileBio')?.value||'').trim();
+  saveProfile();
+
+  // Sidebar user name update
+  if (profileData.name) {
+    document.getElementById('sidebarUser').textContent = '🔑 ' + profileData.name;
+  }
+
+  const msg = document.getElementById('profileMsg');
+  if (msg) { msg.style.display='block'; msg.textContent='✅ Profile saved!'; setTimeout(()=>msg.style.display='none',2000); }
+}
+
+function uploadProfilePic(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.readAsDataURL(input.files[0]);
+  reader.onload = () => {
+    profileData.pic = reader.result;
+    saveProfile();
+    renderProfile();
+  };
+}
+
+async function sendPasswordReset() {
+  const msgEl = document.getElementById('resetMsg');
+  try {
+    await auth.sendPasswordResetEmail(currentUser.email);
+    msgEl.style.color = 'var(--accent3)';
+    msgEl.textContent = '✅ Reset email sent to ' + currentUser.email;
+  } catch(e) {
+    msgEl.style.color = '#ff6b6b';
+    msgEl.textContent = '❌ ' + e.message;
+  }
+  msgEl.style.display = 'block';
 }
 
 </script>
