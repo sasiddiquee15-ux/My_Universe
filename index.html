@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-storage-compat.js"></script>
+ <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Universe — Sabiha</title>
@@ -203,12 +203,14 @@
       margin-top: auto; padding: 16px 12px;
       border-top: 1px solid var(--border);
     }
+    
     .logout-btn {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 12px; border-radius: 10px;
       cursor: pointer; font-size: 14px; color: #ff6b6b;
       transition: background 0.2s;
     }
+    
     .logout-btn:hover { background: rgba(255,107,107,0.1); }
 
     /* ============================================================
@@ -690,9 +692,170 @@
       margin-bottom: 20px;
     }
     .section-header-title { font-size: 16px; font-weight: 600; }
+    /* Canva Style Slide-up Animation */
+.note-card, .project-card {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.note-card.visible, .project-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Hover Effect like Canva */
+.note-card:hover {
+  transform: scale(1.03) !important;
+  box-shadow: 0 10px 30px rgba(138, 43, 226, 0.4);
+}
+
+/* Admin Only Elements (Default hidden) */
+    .admin-only { display: none; }
+
+    /* Canva Style Slide-up Animation for Cards */
+    .note-card, .project-card, .vault-card {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+    .note-card.visible, .project-card.visible, .vault-card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Admin Add Button Styling */
+    .admin-action-container { padding: 16px 12px; margin-top: 10px; }
+    .add-universe-btn {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 12px; background: var(--accent); color: white;
+      border: none; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(124, 106, 255, 0.3);
+    }
+
+    /* LIGHT MODE */
+    body.light { --bg:#f0f0f8; --bg2:#ffffff; --bg3:#e8e8f5; --border:rgba(0,0,0,0.08); --text:#1a1a2e; --text2:#666688; }
+    body.light::before { display:none; }
+    .theme-toggle { position:fixed; top:16px; right:16px; z-index:999; width:40px; height:40px; border-radius:50%; background:var(--bg2); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:var(--glow); transition:all 0.2s; }
+    .theme-toggle:hover { transform:scale(1.1); }
+
+    /* VAULT NEW */
+    .vault-back-btn { padding:8px 16px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; cursor:pointer; font-size:13px; color:var(--text2); transition:all 0.2s; font-family:var(--font); }
+    .vault-back-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .vault-media-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:16px; }
+    .vault-media-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; cursor:pointer; transition:all 0.4s cubic-bezier(0.165,0.84,0.44,1); opacity:0; transform:translateY(20px); }
+    .vault-media-card.visible { opacity:1; transform:translateY(0); }
+    .vault-media-card:hover { transform:scale(1.03) translateY(-4px); border-color:rgba(124,106,255,0.4); box-shadow:0 12px 32px rgba(124,106,255,0.2); }
+    .vault-media-thumb { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; background:var(--bg3); }
+    .vault-media-thumb-placeholder { width:100%; aspect-ratio:4/3; display:flex; align-items:center; justify-content:center; font-size:48px; background:var(--bg3); }
+    .vault-media-info { padding:12px; }
+    .vault-media-name { font-size:13px; font-weight:600; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .vault-media-desc { font-size:11px; color:var(--text2); line-height:1.4; }
+    .vault-upload-btn { display:flex; align-items:center; gap:8px; padding:10px 20px; background:linear-gradient(135deg,var(--accent),#5c4fd6); border:none; border-radius:10px; color:white; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+    .vault-upload-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(124,106,255,0.4); }
+
+    /* LIGHTBOX */
+    .lightbox { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.95); display:none; align-items:center; justify-content:center; flex-direction:column; }
+    .lightbox.open { display:flex; }
+    .lightbox img, .lightbox video, .lightbox audio { max-width:90vw; max-height:78vh; border-radius:12px; object-fit:contain; }
+    .lightbox-info { color:white; text-align:center; margin-top:16px; }
+    .lightbox-name { font-size:16px; font-weight:600; }
+    .lightbox-desc { font-size:13px; color:rgba(255,255,255,0.6); margin-top:4px; }
+    .lightbox-close { position:absolute; top:20px; right:24px; font-size:24px; color:white; cursor:pointer; background:rgba(255,255,255,0.1); border:none; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .lightbox-close:hover { background:rgba(255,255,255,0.25); }
+    .lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,0.1); border:none; width:48px; height:48px; border-radius:50%; color:white; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .lightbox-nav:hover { background:rgba(255,255,255,0.25); }
+    .lightbox-prev { left:20px; }
+    .lightbox-next { right:20px; }
+
+    /* VAULT UPLOAD MODAL */
+    .vault-upload-modal { position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,0.8); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; padding:20px; }
+    .vault-upload-modal.open { display:flex; }
+    .vault-upload-box { background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:32px; width:100%; max-width:460px; box-shadow:var(--glow); animation:fadeUp 0.3s ease; }
+    .drop-zone { border:2px dashed rgba(124,106,255,0.4); border-radius:12px; padding:28px; text-align:center; cursor:pointer; transition:all 0.2s; margin-bottom:16px; background:rgba(124,106,255,0.04); position:relative; }
+    .drop-zone:hover { border-color:var(--accent); background:rgba(124,106,255,0.08); }
+    .drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .drop-zone-icon { font-size:36px; margin-bottom:8px; }
+    .drop-zone-text { font-size:13px; color:var(--text2); }
+
+    /* POMODORO */
+    .pomodoro-widget { position:fixed; bottom:24px; right:24px; z-index:500; background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:20px 24px; box-shadow:var(--glow); min-width:200px; display:none; animation:fadeUp 0.3s ease; }
+    .pomodoro-widget.open { display:block; }
+    .pomodoro-time { font-size:42px; font-weight:700; text-align:center; font-family:var(--mono); margin:8px 0; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .pomodoro-label { font-size:12px; color:var(--text2); text-align:center; margin-bottom:12px; }
+    .pomodoro-controls { display:flex; gap:8px; justify-content:center; }
+    .pomodoro-btn { padding:8px 16px; border-radius:8px; border:none; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; }
+    .pomodoro-start { background:var(--accent); color:white; }
+    .pomodoro-reset { background:var(--bg3); color:var(--text2); }
+    .pomodoro-close-btn { position:absolute; top:10px; right:12px; background:none; border:none; color:var(--text2); cursor:pointer; font-size:16px; }
+    .pomodoro-fab { position:fixed; bottom:24px; right:24px; z-index:499; width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; color:white; font-size:22px; cursor:pointer; box-shadow:0 4px 20px rgba(124,106,255,0.4); display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+    .pomodoro-fab:hover { transform:scale(1.1); }
+
+    /* PUBLIC BANNER */
+    .public-banner { background:rgba(124,106,255,0.08); border:1px solid rgba(124,106,255,0.2); border-radius:12px; padding:10px 16px; font-size:13px; color:var(--text2); margin-bottom:20px; display:none; align-items:center; gap:8px; }
+    .public-banner.show { display:flex; }
   </style>
 </head>
 <body>
+
+<!-- Theme Toggle -->
+<button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">🌙</button>
+
+<!-- Pomodoro FAB -->
+<button class="pomodoro-fab" onclick="togglePomodoro()" id="pomFab">⏱️</button>
+
+<!-- Pomodoro Widget -->
+<div class="pomodoro-widget" id="pomWidget">
+  <button class="pomodoro-close-btn" onclick="togglePomodoro()">✕</button>
+  <div class="pomodoro-label" id="pomLabel">Study Session</div>
+  <div class="pomodoro-time" id="pomTime">25:00</div>
+  <div class="pomodoro-controls">
+    <button class="pomodoro-btn pomodoro-start" onclick="togglePomTimer()" id="pomStartBtn">▶ Start</button>
+    <button class="pomodoro-btn pomodoro-reset" onclick="resetPomTimer()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- Lightbox for vault media -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1)">›</button>
+  <div id="lightboxContent"></div>
+  <div class="lightbox-info">
+    <div class="lightbox-name" id="lightboxName"></div>
+    <div class="lightbox-desc" id="lightboxDesc"></div>
+  </div>
+</div>
+
+<!-- Vault Upload Modal — styled per-category -->
+<div class="vault-upload-modal" id="vaultUploadModal">
+  <div class="vault-upload-box">
+    <h3 id="vaultUploadTitle">📸 Upload to Photos</h3>
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone-icon" id="dropZoneIcon">📁</div>
+      <div class="drop-zone-text">Click or drag & drop your file here</div>
+      <input type="file" id="vaultFile" onchange="previewVaultFile(this)"/>
+    </div>
+    <div id="vaultFilePreview" style="margin-bottom:12px;display:none">
+      <div style="font-size:12px;color:var(--accent);margin-bottom:6px" id="vaultFileName"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Name / Title</label>
+      <input type="text" class="form-input" id="vaultItemName" placeholder="Give it a name..."/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-textarea" id="vaultItemDesc" placeholder="Write something about this..." style="min-height:70px"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="vault-upload-btn" style="flex:1;justify-content:center" onclick="uploadVaultItem()">🚀 Upload</button>
+      <button class="btn-ghost" onclick="closeVaultUploadModal()">Cancel</button>
+    </div>
+    <div id="vaultUploadMsg" style="font-size:12px;margin-top:10px;display:none;text-align:center"></div>
+  </div>
+</div>
+
 
 <!-- ============================================================
      LOGIN PAGE
@@ -747,6 +910,7 @@
       <!-- প্রতিটা nav-item এ onclick দিয়ে page switch হয় -->
       <div class="nav-item active" onclick="showPage('dashboard')">
         <span class="icon">🏠</span> Dashboard
+       
       </div>
       <div class="nav-item" onclick="showPage('search')">
         <span class="icon">🔎</span> Search
@@ -786,17 +950,46 @@
       </div>
     </div>
 
-    <div class="sidebar-bottom">
-      <div class="logout-btn" onclick="doLogout()">
-        <span>🚪</span> Logout
+   <div class="sidebar-bottom">
+      
+      <div class="admin-only admin-action-container">
+        <button class="add-universe-btn" onclick="openUploadModal()">
+          <span class="icon">✨</span> Add to Universe
+        </button>
       </div>
+
+      <div class="logout-btn" onclick="doLogout()">
+        <span class="icon">🚪</span> Logout
+      </div>
+      
     </div>
   </nav>
 
-  <!-- MAIN CONTENT — সব page এখানে load হবে -->
   <main class="main" id="mainContent"></main>
 </div>
 
+<div id="uploadModal" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background: var(--bg2); padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; border: 1px solid var(--accent);">
+    <h3 style="color: var(--accent); margin-top:0;">Upload New Memory</h3>
+    <input type="text" id="upTitle" placeholder="Name / Title" style="width:100%; padding:10px; margin-bottom:10px; background:#000; color:#fff; border:1px solid #333;">
+    <textarea id="upDesc" placeholder="Description..." style="width:100%; padding:10px; margin-bottom:10px; background:#000; color:#fff; border:1px solid #333; height:80px;"></textarea>
+    
+    <select id="upCategory" style="width:100%; padding:10px; margin-bottom:10px; background:#000; color:#fff;">
+      <option value="study">StudyHub</option>
+      <option value="projects">University Projects</option>
+      <option value="photos">Vault: Photos</option>
+      <option value="videos">Vault: Videos</option>
+      <option value="private">Vault: Private 🤫</option>
+    </select>
+    
+    <input type="file" id="upFile" style="color:#fff; margin-bottom:20px;">
+    
+    <div style="display:flex; gap:10px;">
+      <button onclick="handleMegaUpload()" style="flex:1; background:var(--accent); border:none; padding:10px; border-radius:10px; cursor:pointer;">Launch! 🚀</button>
+      <button onclick="closeUploadModal()" style="flex:1; background:#333; color:#fff; border:none; padding:10px; border-radius:10px; cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
 <!-- ============================================================
      NOTE EDITOR MODAL — note লেখার popup
 ============================================================ -->
@@ -950,7 +1143,26 @@
       </div>
       <div class="form-group">
         <label class="form-label">References / Notes</label>
-        <textarea class="form-textarea" id="projNotes" placeholder="References, notes..." style="min-height:80px"></textarea>
+        <textarea class="form-textarea" id="projNotes" placeholder="References, notes..." style="min-height:60px"></textarea>
+      </div>
+      <!-- FILE UPLOAD -->
+      <div class="form-group">
+        <label class="form-label">📎 Attach Files (PDF, DOC, PPT, etc.)</label>
+        <div class="drop-zone" style="padding:16px">
+          <div class="drop-zone-icon" style="font-size:24px;margin-bottom:4px">📁</div>
+          <div class="drop-zone-text">Click to select files (multiple allowed)</div>
+          <input type="file" id="projFiles" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.py,.java,.cpp,.c,.html,.css,.js" onchange="previewProjFiles(this)"/>
+        </div>
+        <div id="projFilesPreview" style="margin-top:8px;display:none;font-size:12px;color:var(--accent)"></div>
+      </div>
+      <!-- LINK -->
+      <div class="form-group">
+        <label class="form-label">🔗 Add Link (Google Drive / GitHub / etc.)</label>
+        <input type="url" class="form-input" id="projLink" placeholder="https://drive.google.com/..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">📝 Link Description</label>
+        <input type="text" class="form-input" id="projLinkDesc" placeholder="e.g. Final PDF on Google Drive"/>
       </div>
     </div>
     <div class="modal-footer">
@@ -1020,6 +1232,25 @@
           <input type="text" class="form-input" id="subjectTags" placeholder="Java, OOP"/>
         </div>
       </div>
+      <!-- FILE UPLOAD -->
+      <div class="form-group">
+        <label class="form-label">📎 Attach Study Files</label>
+        <div class="drop-zone" style="padding:16px">
+          <div class="drop-zone-icon" style="font-size:24px;margin-bottom:4px">📚</div>
+          <div class="drop-zone-text">PDF, notes, assignments — multiple allowed</div>
+          <input type="file" id="subjectFiles" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.png" onchange="previewSubjectFiles(this)"/>
+        </div>
+        <div id="subjectFilesPreview" style="margin-top:8px;display:none;font-size:12px;color:var(--accent)"></div>
+      </div>
+      <!-- LINK -->
+      <div class="form-group">
+        <label class="form-label">🔗 Add Link (Drive / YouTube / etc.)</label>
+        <input type="url" class="form-input" id="subjectLink" placeholder="https://..."/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">📝 Link Description</label>
+        <input type="text" class="form-input" id="subjectLinkDesc" placeholder="e.g. Lecture slides on Drive"/>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-ghost" onclick="document.getElementById('subjectModal').classList.remove('open')">Cancel</button>
@@ -1030,69 +1261,39 @@
 
 
 <script>
-// --- 1. NOTUN CONFIGURATION (47edb) ---
+
+// ================================================================
+// FIREBASE SETUP — তোমার real config
+// ✅ Fixed: একটাই initializeApp, একটাই onAuthStateChanged
+// ================================================================
 const firebaseConfig = {
-  apiKey: "AIzaSyBLwfEJ3qarqyhZGaCJ5KYAkPOfEV3Erws",
-  authDomain: "my-universe-47edb.firebaseapp.com",
-  projectId: "my-universe-47edb",
-  storageBucket: "my-universe-47edb.firebasestorage.app", // Notun storage link
+  apiKey:            "AIzaSyBLwfEJ3qarqyhZGaCJ5KYAkPOfEV3Erws",
+  authDomain:        "my-universe-47edb.firebaseapp.com",
+  projectId:         "my-universe-47edb",
+  storageBucket:     "my-universe-47edb.firebasestorage.app",
   messagingSenderId: "140252911441",
-  appId: "1:140252911441:web:7338bf658fc76136882570",
-  measurementId: "G-R80LQ778P0"
+  appId:             "1:140252911441:web:7338bf658fc76136882570",
+  measurementId:     "G-R80LQ778P0"
 };
 
-// --- 2. INITIALIZATION ---
+// ✅ একবারই initialize করো
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+const db      = firebase.firestore();
 const storage = firebase.storage();
+const auth    = firebase.auth();
 
-// --- 3. LOGIN LOGIC ---
-window.adminLogin = async (email, password) => {
-  try {
-    await firebase.auth().signInWithEmailAndPassword(email, password);
-    alert("Welcome Sabiha! Admin Access Granted.");
-    console.log("✅ Success! Logged in.");
-  } catch (e) {
-    alert("Access Denied: " + e.message);
-  }
-};
-// ==========================================
-// 👇 EI NOTUN CODE-TUKU EKHANE BOSHABE 👇
-// ==========================================
-firebase.auth().onAuthStateChanged((user) => {
-    if (user) {
-        console.log("Welcome back! Auto-login success.");
-        // Login screen lukiye main app dekhano
-        if (document.getElementById('login-screen')) {
-            document.getElementById('login-screen').classList.add('hidden');
-        }
-        showApp(); 
-    } else {
-        console.log("No user logged in.");
-    }
-});
-// ==========================================
-// --- 4. REAL-TIME DATA ---
-db.collection('notes').orderBy('date', 'desc').onSnapshot(snapshot => {
-  const notesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderNotes(notesList);
-}, (error) => {
-  console.log("Firebase error:", error.message);
-});
-// ================================================================
-// DATA STORE
-// সব data এখানে localStorage এ save হয়
-// Browser বন্ধ করলেও data থাকবে
-// ================================================================
+// Current user
+let currentUser = null;
 
-// localStorage থেকে data পড়া, না থাকলে default value দেওয়া
+// ================================================================
+// DATA — localStorage
+// ================================================================
 let notes    = JSON.parse(localStorage.getItem('univ_notes')    || '[]');
 let members  = JSON.parse(localStorage.getItem('univ_members')  || '[]');
 let projects = JSON.parse(localStorage.getItem('univ_projects') || '[]');
 let tasks    = JSON.parse(localStorage.getItem('univ_tasks')    || '[]');
 let subjects = JSON.parse(localStorage.getItem('univ_subjects') || '[]');
 
-// Data save করার helper functions
 function saveNotes()    { localStorage.setItem('univ_notes',    JSON.stringify(notes));    }
 function saveMembers()  { localStorage.setItem('univ_members',  JSON.stringify(members));  }
 function saveProjects() { localStorage.setItem('univ_projects', JSON.stringify(projects)); }
@@ -1100,44 +1301,114 @@ function saveTasks()    { localStorage.setItem('univ_tasks',    JSON.stringify(t
 function saveSubjects() { localStorage.setItem('univ_subjects', JSON.stringify(subjects)); }
 
 // ================================================================
-// AUTH — login / logout system
+// UPLOAD MODAL FUNCTIONS — তোমার নিজের লেখা ✅ রাখা হয়েছে
 // ================================================================
+function openUploadModal() {
+  const modal = document.getElementById('uploadModal');
+  if (modal) { modal.style.display = 'flex'; }
+  else { alert("Modal HTML added করা হয়নি এখনও!"); }
+}
+function closeUploadModal() {
+  const modal = document.getElementById('uploadModal');
+  if (modal) { modal.style.display = 'none'; }
+}
 
-// ⚠️ এখানে তোমার username আর password বদলাও!
-const CREDENTIALS = { username: 'sabiha', password: 'sabiha123' };
+// ================================================================
+// MEGA UPLOAD — তোমার নিজের লেখা Base64 system ✅ রাখা হয়েছে
+// ================================================================
+async function handleMegaUpload() {
+  const fileInput = document.getElementById('upFile');
+  const title     = document.getElementById('upTitle').value;
+  const desc      = document.getElementById('upDesc').value;
+  const category  = document.getElementById('upCategory').value;
 
-// Page load হলে check করো — আগে login ছিল কিনা (remember me)
-window.onload = function() {
-  const saved = localStorage.getItem('univ_loggedIn');
-  if (saved === 'true') {
-    showApp(); // সরাসরি app দেখাও
+  if (!fileInput.files[0] || !title) {
+    alert("Please provide a Title and select a File! 😊");
+    return;
   }
-  // আজকের date calendar input এ set করা
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('noteDate').value = today;
-  document.getElementById('taskDue').value  = today;
-};
 
+  const file   = fileInput.files[0];
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+
+  reader.onload = async () => {
+    const base64Data = reader.result;
+    try {
+      await db.collection("universe").add({
+        title, description: desc, category,
+        fileData: base64Data,
+        fileType: file.type,
+        uploadedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      alert("Success! Your memory has been launched into the Universe. 🚀");
+      closeUploadModal();
+      location.reload();
+    } catch (error) {
+      console.error("Firebase Error: ", error);
+      alert("Oops! Something went wrong.");
+    }
+  };
+}
+
+// ================================================================
+// AUTH STATE — ✅ একটাই onAuthStateChanged
+// Login হলে app দেখাবে, না হলে login page দেখাবে
+// ================================================================
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    // Login page লুকাও
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    // Sidebar এ নাম দেখাও
+    const name = user.displayName || user.email.split('@')[0];
+    document.getElementById('sidebarUser').textContent = 'Welcome, ' + name;
+    // Dashboard দেখাও
+    showPage('dashboard');
+    // Admin mode apply করো
+    setTimeout(applyAdminMode, 200);
+    // Date inputs
+    const today = new Date().toISOString().split('T')[0];
+    if (document.getElementById('noteDate')) document.getElementById('noteDate').value = today;
+    if (document.getElementById('taskDue'))  document.getElementById('taskDue').value  = today;
+  } else {
+    currentUser = null;
+    document.getElementById('loginPage').classList.remove('hidden');
+    document.getElementById('app').classList.remove('visible');
+  }
+});
+
+// ================================================================
+// LOGIN — Firebase email/password
+// ================================================================
 async function doLogin() {
-  const user = document.getElementById('loginUser').value.trim(); // Firebase Email
-  const pass = document.getElementById('loginPass').value;        // Firebase Password
-  const remember = document.getElementById('rememberMe').checked;
-  const errorMsg = document.getElementById('loginError');
+  const email = document.getElementById('loginUser').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = '❌ Please enter email and password!';
+    errEl.style.display = 'block'; return;
+  }
+
+  const btn = document.querySelector('.btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
 
   try {
-    // Firebase Authentication trigger kora
-    await firebase.auth().signInWithEmailAndPassword(user, pass);
-    
-    // Login hole storage-e save kora (optional)
-    if (remember) localStorage.setItem('univ_loggedIn', 'true');
-    
-    // Website-er bhetore niye jaoa
-    showApp(); 
-    alert("Welcome back, Sabiha!");
-  } catch (error) {
-    // Vul hole error dekhano
-    errorMsg.style.display = 'block';
-    errorMsg.innerText = "Error: " + error.message;
+    await auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged বাকি কাজ করবে
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Enter My Universe ✦'; }
+    const msgs = {
+      'auth/user-not-found':     '❌ No account found with this email!',
+      'auth/wrong-password':     '❌ Wrong password!',
+      'auth/invalid-email':      '❌ Invalid email format!',
+      'auth/too-many-requests':  '❌ Too many attempts. Try again later.',
+      'auth/invalid-credential': '❌ Wrong email or password!',
+    };
+    errEl.textContent = msgs[err.code] || '❌ ' + err.message;
+    errEl.style.display = 'block';
     document.getElementById('loginPass').value = '';
   }
 }
@@ -1145,19 +1416,25 @@ async function doLogin() {
 function showApp() {
   document.getElementById('loginPage').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
-  showPage('dashboard'); // Login এর পরে dashboard দেখাও
+  showPage('dashboard');
 }
 
-function doLogout() {
-  localStorage.removeItem('univ_loggedIn');
-  document.getElementById('loginPage').classList.remove('hidden');
-  document.getElementById('app').classList.remove('visible');
-  document.getElementById('loginPass').value = '';
-  document.getElementById('loginError').style.display = 'none';
+async function doLogout() {
+  try {
+    await auth.signOut();
+  } catch (err) { alert('Logout error: ' + err.message); }
 }
 
 // ================================================================
-// NAVIGATION — page switching
+// SETTINGS — changeCredentials এখন Firebase password reset বলবে
+// ================================================================
+function changeCredentials() {
+  const msg = document.getElementById('passMsg');
+  msg.style.color = 'var(--accent3)';
+  msg.textContent = '✅ Firebase এ password change করতে Firebase Console এ যাও। V2 তে এখানেই হবে।';
+  msg.style.display = 'block';
+}
+
 // ================================================================
 
 function showPage(page) {
@@ -1423,30 +1700,54 @@ function renderSubjectCards() {
       <p>No subjects yet. Add your first subject!</p></div>`;
     return;
   }
+  const isAdmin = !!currentUser;
   grid.innerHTML = subjects.map((s, i) => `
     <div class="subject-card">
-      <div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:14px;color:var(--text2)"
-           onclick="deleteSubject(${i})">🗑️</div>
+      ${isAdmin ? `<div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:14px;color:var(--text2)" onclick="deleteSubject(${i})">🗑️</div>` : ''}
       <div class="subject-emoji">${s.emoji || '📖'}</div>
       <div class="subject-name">${s.name}</div>
-      <div class="subject-count">${s.notes || 0} notes</div>
+      <div class="subject-count">${(s.files||[]).length} file${(s.files||[]).length!==1?'s':''}</div>
       <div class="subject-tags">
         ${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
       </div>
+      ${(s.files||[]).length ? `
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+          ${s.files.map((f,fi) => `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <span style="font-size:12px">📎</span>
+              <a href="${f.data}" download="${f.name}" style="font-size:11px;color:var(--accent);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</a>
+            </div>`).join('')}
+        </div>` : ''}
+      ${s.link ? `
+        <div style="margin-top:6px">
+          <a href="${s.link}" target="_blank" style="font-size:11px;color:var(--accent2);text-decoration:none">
+            🔗 ${s.linkDesc || s.link}
+          </a>
+        </div>` : ''}
     </div>`).join('');
 }
 
-function saveSubject() {
-  const name = document.getElementById('subjectName').value.trim();
+async function saveSubject() {
+  const name  = document.getElementById('subjectName').value.trim();
   const emoji = document.getElementById('subjectEmoji').value.trim() || '📖';
-  const tags = document.getElementById('subjectTags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  const tags  = document.getElementById('subjectTags').value.split(',').map(t=>t.trim()).filter(Boolean);
   if (!name) { alert('Enter subject name!'); return; }
-  subjects.push({ name, emoji, tags, notes: 0 });
+
+  const fileInput = document.getElementById('subjectFiles');
+  const files     = await readFilesAsBase64(fileInput);
+
+  subjects.push({
+    name, emoji, tags, notes: 0,
+    files:    files,
+    link:     document.getElementById('subjectLink').value.trim(),
+    linkDesc: document.getElementById('subjectLinkDesc').value.trim(),
+  });
   saveSubjects();
   document.getElementById('subjectModal').classList.remove('open');
-  document.getElementById('subjectName').value = '';
-  document.getElementById('subjectEmoji').value = '';
-  document.getElementById('subjectTags').value = '';
+  ['subjectName','subjectEmoji','subjectTags','subjectLink','subjectLinkDesc']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('subjectFiles').value = '';
+  document.getElementById('subjectFilesPreview').style.display = 'none';
   renderSubjectCards();
 }
 
@@ -1482,15 +1783,30 @@ function renderProjectsList() {
     list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎓</div><p>No projects yet!</p></div>`;
     return;
   }
+  const isAdminP = !!currentUser;
   list.innerHTML = projects.map((p, i) => `
-    <div class="project-item">
-      <div class="project-icon">${typeIcons[p.type]||'📁'}</div>
-      <div class="project-info">
-        <div class="project-name">${p.title}</div>
-        <div class="project-meta">${p.course} • ${p.teacher} • Due: ${p.deadline||'—'}</div>
+    <div class="project-item" style="flex-direction:column;align-items:flex-start;gap:10px">
+      <div style="display:flex;align-items:center;gap:16px;width:100%">
+        <div class="project-icon">${typeIcons[p.type]||'📁'}</div>
+        <div class="project-info">
+          <div class="project-name">${p.title}</div>
+          <div class="project-meta">${p.course||'—'} • ${p.teacher||'—'} • Due: ${p.deadline||'—'}</div>
+        </div>
+        <span class="project-badge ${statusClass[p.status]||'badge-pending'}" style="margin-left:auto">${p.status}</span>
+        ${isAdminP ? `<span style="cursor:pointer;color:var(--text2)" onclick="deleteProject(${i})">🗑️</span>` : ''}
       </div>
-      <span class="project-badge ${statusClass[p.status]||'badge-pending'}">${p.status}</span>
-      <span style="cursor:pointer;color:var(--text2);margin-left:8px" onclick="deleteProject(${i})">🗑️</span>
+      ${(p.files||[]).length || p.link ? `
+        <div style="padding:10px 12px;background:var(--bg3);border-radius:10px;width:100%;display:flex;flex-wrap:wrap;gap:8px">
+          ${(p.files||[]).map(f => `
+            <a href="${f.data}" download="${f.name}" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:20px;font-size:11px;color:var(--accent);text-decoration:none">
+              📎 ${f.name}
+            </a>`).join('')}
+          ${p.link ? `
+            <a href="${p.link}" target="_blank" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(255,106,176,0.1);border:1px solid rgba(255,106,176,0.2);border-radius:20px;font-size:11px;color:var(--accent2);text-decoration:none">
+              🔗 ${p.linkDesc || 'Open Link'}
+            </a>` : ''}
+        </div>` : ''}
+      ${p.notes ? `<div style="font-size:12px;color:var(--text2);padding:0 4px">${p.notes}</div>` : ''}
     </div>`).join('');
 }
 
@@ -1500,19 +1816,72 @@ function openProjectModal() {
 function closeProjectModal() {
   document.getElementById('projectModal').classList.remove('open');
 }
-function saveProject() {
+function previewProjFiles(input) {
+  const preview = document.getElementById('projFilesPreview');
+  if (input.files.length) {
+    preview.style.display = 'block';
+    preview.innerHTML = Array.from(input.files).map(f =>
+      `📎 ${f.name} <span style="color:var(--text2)">(${(f.size/1024).toFixed(1)}KB)</span>`
+    ).join('<br>');
+  }
+}
+
+function previewSubjectFiles(input) {
+  const preview = document.getElementById('subjectFilesPreview');
+  if (input.files.length) {
+    preview.style.display = 'block';
+    preview.innerHTML = Array.from(input.files).map(f =>
+      `📎 ${f.name} <span style="color:var(--text2)">(${(f.size/1024).toFixed(1)}KB)</span>`
+    ).join('<br>');
+  }
+}
+
+// Files কে Base64 array তে convert করার helper
+function readFilesAsBase64(fileInput) {
+  return new Promise((resolve) => {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) { resolve([]); return; }
+    const results = [];
+    let done = 0;
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        results.push({ name: file.name, type: file.type, size: file.size, data: reader.result });
+        done++;
+        if (done === files.length) resolve(results);
+      };
+    });
+  });
+}
+
+async function saveProject() {
   const title = document.getElementById('projTitle').value.trim();
   if (!title) { alert('Enter project title!'); return; }
+
+  // Files পড়ো
+  const fileInput = document.getElementById('projFiles');
+  const files = await readFilesAsBase64(fileInput);
+
   projects.unshift({
-    title, course: document.getElementById('projCourse').value,
-    teacher: document.getElementById('projTeacher').value,
-    deadline: document.getElementById('projDeadline').value,
-    type: document.getElementById('projType').value,
-    status: document.getElementById('projStatus').value,
-    notes: document.getElementById('projNotes').value,
+    title,
+    course:    document.getElementById('projCourse').value,
+    teacher:   document.getElementById('projTeacher').value,
+    deadline:  document.getElementById('projDeadline').value,
+    type:      document.getElementById('projType').value,
+    status:    document.getElementById('projStatus').value,
+    notes:     document.getElementById('projNotes').value,
+    files:     files,
+    link:      document.getElementById('projLink').value.trim(),
+    linkDesc:  document.getElementById('projLinkDesc').value.trim(),
   });
   saveProjects();
   closeProjectModal();
+  // Reset file inputs
+  document.getElementById('projFiles').value = '';
+  document.getElementById('projFilesPreview').style.display = 'none';
+  document.getElementById('projLink').value = '';
+  document.getElementById('projLinkDesc').value = '';
   renderProjectsList();
 }
 function deleteProject(i) {
@@ -1681,38 +2050,231 @@ function deleteTask(i) {
 // ================================================================
 // PERSONAL VAULT
 // ================================================================
+// ================================================================
+// VAULT DATA — localStorage এ save হয়
+// Private category শুধু admin দেখতে পাবে
+// ================================================================
+let vaultData = JSON.parse(localStorage.getItem('univ_vault') || '{}');
+// Structure: { photos: [], videos: [], audio: [], documents: [], memories: [], private: [] }
+const VAULT_CATS = [
+  { key:'photos',    icon:'📸', label:'Photos',    accept:'image/*',       public:true  },
+  { key:'videos',    icon:'🎬', label:'Videos',    accept:'video/*',       public:true  },
+  { key:'audio',     icon:'🎵', label:'Audio',     accept:'audio/*',       public:true  },
+  { key:'documents', icon:'📄', label:'Documents', accept:'.pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx', public:true },
+  { key:'memories',  icon:'💝', label:'Memories',  accept:'image/*,video/*', public:true  },
+  { key:'private',   icon:'🔐', label:'Private',   accept:'*',             public:false },
+];
+function saveVault() { localStorage.setItem('univ_vault', JSON.stringify(vaultData)); }
+if (!vaultData.photos)    vaultData.photos    = [];
+if (!vaultData.videos)    vaultData.videos    = [];
+if (!vaultData.audio)     vaultData.audio     = [];
+if (!vaultData.documents) vaultData.documents = [];
+if (!vaultData.memories)  vaultData.memories  = [];
+if (!vaultData.private)   vaultData.private   = [];
+
+let currentVaultCat = null; // currently open category
+let lightboxItems   = [];
+let lightboxIndex   = 0;
+let vaultUploadCat  = null;
+
+// MAIN vault page — folder grid
 function renderVault() {
+  const isAdmin = !!currentUser;
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
       <div class="page-header">
         <div class="page-title">🔒 Personal Vault</div>
-        <div class="page-sub">Your private memories and files</div>
+        <div class="page-sub">${isAdmin ? 'Your private universe — click any folder to explore' : 'Sabiha\'s collection — view only'}</div>
       </div>
-
-      <!-- Folders -->
+      ${!isAdmin ? '<div class="public-banner show">👁️ You are viewing as a guest — read only access</div>' : ''}
       <div class="vault-folders">
-        <div class="folder-item"><div class="folder-icon">📸</div><div class="folder-name">Photos</div><div class="folder-count">Coming soon</div></div>
-        <div class="folder-item"><div class="folder-icon">🎬</div><div class="folder-name">Videos</div><div class="folder-count">Coming soon</div></div>
-        <div class="folder-item"><div class="folder-icon">🎵</div><div class="folder-name">Audio</div><div class="folder-count">Coming soon</div></div>
-        <div class="folder-item"><div class="folder-icon">📄</div><div class="folder-name">Documents</div><div class="folder-count">Coming soon</div></div>
-        <div class="folder-item"><div class="folder-icon">💝</div><div class="folder-name">Memories</div><div class="folder-count">Coming soon</div></div>
-        <div class="folder-item"><div class="folder-icon">🔐</div><div class="folder-name">Private</div><div class="folder-count">Coming soon</div></div>
-      </div>
-
-      <!-- Info card -->
-      <div class="card" style="border-color:rgba(124,106,255,0.3);background:rgba(124,106,255,0.05)">
-        <div style="display:flex;gap:12px;align-items:flex-start">
-          <span style="font-size:24px">ℹ️</span>
-          <div>
-            <div style="font-weight:600;margin-bottom:4px">File storage coming in V2!</div>
-            <div style="font-size:13px;color:var(--text2);line-height:1.6">
-              Real photo/video/file upload needs Firebase or Cloudinary (free). 
-              V2 তে এটা যোগ করা হবে। এখন Google Drive এ files রেখে link এখানে note এ save করতে পারো।
-            </div>
-          </div>
-        </div>
+        ${VAULT_CATS.map(cat => {
+          if (!isAdmin && !cat.public) return ''; // private hidden for guests
+          const items = vaultData[cat.key] || [];
+          return `<div class="folder-item" onclick="openVaultCategory('${cat.key}')">
+            <div class="folder-icon">${cat.icon}</div>
+            <div class="folder-name">${cat.label}</div>
+            <div class="folder-count">${items.length} item${items.length!==1?'s':''}</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
+}
+
+// Open a vault category — show media grid
+function openVaultCategory(catKey) {
+  currentVaultCat = catKey;
+  const cat    = VAULT_CATS.find(c => c.key === catKey);
+  const isAdmin= !!currentUser;
+  const items  = vaultData[catKey] || [];
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="page">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+        <button class="vault-back-btn" onclick="renderVault()">← Back</button>
+        <div>
+          <div class="page-title" style="margin-bottom:0">${cat.icon} ${cat.label}</div>
+          <div style="font-size:13px;color:var(--text2)">${items.length} item${items.length!==1?'s':''}</div>
+        </div>
+        ${isAdmin ? `<button class="vault-upload-btn" style="margin-left:auto" onclick="openVaultUploadModal('${catKey}')">➕ Upload</button>` : ''}
+      </div>
+      ${!isAdmin && !cat.public ? '<div class="empty-state"><div class="empty-icon">🔐</div><p>This folder is private.</p></div>' : ''}
+      ${(isAdmin || cat.public) ? `<div class="vault-media-grid" id="vaultMediaGrid">
+        ${items.length === 0 ? '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">' + cat.icon + '</div><p>No items yet.' + (isAdmin ? ' Click Upload to add!' : '') + '</p></div>' : ''}
+      </div>` : ''}
+    </div>`;
+
+  if (isAdmin || cat.public) {
+    renderVaultItems(catKey);
+  }
+}
+
+// Render media cards with animation
+function renderVaultItems(catKey) {
+  const grid  = document.getElementById('vaultMediaGrid');
+  if (!grid) return;
+  const items = vaultData[catKey] || [];
+  if (!items.length) return;
+
+  lightboxItems = items; // for lightbox navigation
+
+  grid.innerHTML = items.map((item, i) => {
+    let thumb = '';
+    if (item.type && item.type.startsWith('image/')) {
+      thumb = `<img class="vault-media-thumb" src="${item.data}" alt="${item.name}" loading="lazy"/>`;
+    } else if (item.type && item.type.startsWith('video/')) {
+      thumb = `<div class="vault-media-thumb-placeholder">🎬</div>`;
+    } else if (item.type && item.type.startsWith('audio/')) {
+      thumb = `<div class="vault-media-thumb-placeholder">🎵</div>`;
+    } else {
+      thumb = `<div class="vault-media-thumb-placeholder">📄</div>`;
+    }
+    const isAdmin = !!currentUser;
+    return `<div class="vault-media-card" id="vcard_${i}" onclick="openLightbox(${i}, '${catKey}')">
+      ${thumb}
+      <div class="vault-media-info">
+        <div class="vault-media-name">${item.name}</div>
+        <div class="vault-media-desc">${item.desc || ''}</div>
+        ${isAdmin ? `<div style="margin-top:8px"><span onclick="event.stopPropagation();deleteVaultItem('${catKey}',${i})" style="font-size:12px;color:#ff6b6b;cursor:pointer">🗑️ Delete</span></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Animate cards in with slight delay
+  items.forEach((_, i) => {
+    setTimeout(() => {
+      const el = document.getElementById('vcard_' + i);
+      if (el) el.classList.add('visible');
+    }, i * 80);
+  });
+}
+
+// Open vault upload modal
+function openVaultUploadModal(catKey) {
+  vaultUploadCat = catKey;
+  const cat = VAULT_CATS.find(c => c.key === catKey);
+  document.getElementById('vaultUploadTitle').textContent = cat.icon + ' Upload to ' + cat.label;
+  document.getElementById('vaultFile').accept = cat.accept;
+  document.getElementById('vaultItemName').value = '';
+  document.getElementById('vaultItemDesc').value = '';
+  document.getElementById('vaultFilePreview').style.display = 'none';
+  document.getElementById('vaultUploadMsg').style.display = 'none';
+  document.getElementById('vaultUploadModal').classList.add('open');
+}
+function closeVaultUploadModal() {
+  document.getElementById('vaultUploadModal').classList.remove('open');
+}
+
+// Preview selected file name
+function previewVaultFile(input) {
+  if (input.files[0]) {
+    document.getElementById('vaultFileName').textContent = '📎 ' + input.files[0].name;
+    document.getElementById('vaultFilePreview').style.display = 'block';
+    // Auto-fill name if empty
+    if (!document.getElementById('vaultItemName').value) {
+      document.getElementById('vaultItemName').value = input.files[0].name.split('.')[0];
+    }
+  }
+}
+
+// Upload vault item — Base64 save to localStorage
+async function uploadVaultItem() {
+  const file  = document.getElementById('vaultFile').files[0];
+  const name  = document.getElementById('vaultItemName').value.trim();
+  const desc  = document.getElementById('vaultItemDesc').value.trim();
+  const msgEl = document.getElementById('vaultUploadMsg');
+
+  if (!file) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please select a file!'; msgEl.style.display='block'; return; }
+  if (!name) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please enter a name!'; msgEl.style.display='block'; return; }
+
+  msgEl.style.color='var(--accent3)'; msgEl.textContent='⏳ Uploading...'; msgEl.style.display='block';
+
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => {
+    if (!vaultData[vaultUploadCat]) vaultData[vaultUploadCat] = [];
+    vaultData[vaultUploadCat].push({
+      name, desc, data: reader.result,
+      type: file.type, size: file.size,
+      uploadedAt: new Date().toISOString()
+    });
+    saveVault();
+    msgEl.style.color='var(--accent3)'; msgEl.textContent='✅ Uploaded!';
+    setTimeout(() => {
+      closeVaultUploadModal();
+      openVaultCategory(vaultUploadCat);
+    }, 800);
+  };
+  reader.onerror = () => {
+    msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Upload failed!';
+  };
+}
+
+// Delete vault item
+function deleteVaultItem(catKey, index) {
+  if (confirm('Delete this item?')) {
+    vaultData[catKey].splice(index, 1);
+    saveVault();
+    openVaultCategory(catKey);
+  }
+}
+
+// LIGHTBOX — full screen viewer with prev/next
+function openLightbox(index, catKey) {
+  lightboxItems = vaultData[catKey] || [];
+  lightboxIndex = index;
+  showLightboxItem();
+  document.getElementById('lightbox').classList.add('open');
+  document.addEventListener('keydown', lightboxKeyHandler);
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.removeEventListener('keydown', lightboxKeyHandler);
+}
+function lightboxKeyHandler(e) {
+  if (e.key === 'ArrowRight') lightboxNav(1);
+  if (e.key === 'ArrowLeft')  lightboxNav(-1);
+  if (e.key === 'Escape')     closeLightbox();
+}
+function lightboxNav(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxItems.length) % lightboxItems.length;
+  showLightboxItem();
+}
+function showLightboxItem() {
+  const item    = lightboxItems[lightboxIndex];
+  const content = document.getElementById('lightboxContent');
+  document.getElementById('lightboxName').textContent = item.name;
+  document.getElementById('lightboxDesc').textContent = item.desc || '';
+
+  if (item.type && item.type.startsWith('image/')) {
+    content.innerHTML = `<img src="${item.data}" alt="${item.name}" style="max-width:90vw;max-height:78vh;border-radius:12px;object-fit:contain"/>`;
+  } else if (item.type && item.type.startsWith('video/')) {
+    content.innerHTML = `<video src="${item.data}" controls style="max-width:90vw;max-height:78vh;border-radius:12px"></video>`;
+  } else if (item.type && item.type.startsWith('audio/')) {
+    content.innerHTML = `<div style="font-size:80px;margin-bottom:16px">🎵</div><audio src="${item.data}" controls style="width:300px"></audio>`;
+  } else {
+    content.innerHTML = `<div style="font-size:80px;margin-bottom:16px">📄</div><a href="${item.data}" download="${item.name}" style="color:var(--accent);font-size:15px">⬇️ Download ${item.name}</a>`;
+  }
 }
 
 // ================================================================
@@ -1780,18 +2342,10 @@ function renderSettings() {
 
 // Password/username পরিবর্তন করার function
 function changeCredentials() {
-  const newUser = document.getElementById('newUser').value.trim();
-  const newPass = document.getElementById('newPass').value;
-  const confirm = document.getElementById('confirmPass').value;
+  // ✅ Firebase এ password change — V2 তে এখানেই হবে
   const msg = document.getElementById('passMsg');
-
-  if (confirm !== CREDENTIALS.password) {
-    msg.style.color = '#ff6b6b'; msg.textContent = '❌ Current password is wrong!';
-    msg.style.display = 'block'; return;
-  }
-  if (newUser) CREDENTIALS.username = newUser;
-  if (newPass) CREDENTIALS.password = newPass;
-  msg.style.color = 'var(--accent3)'; msg.textContent = '✅ Updated! (Note: resets on page reload — V2 এ permanent হবে)';
+  msg.style.color = 'var(--accent3)';
+  msg.textContent = '✅ Firebase ব্যবহার করছো — password change করতে Firebase Console এ যাও। V2 তে এখানেই হবে।';
   msg.style.display = 'block';
 }
 
@@ -1837,37 +2391,194 @@ function renderSearch() {
     </div>`;
 }
 
+
+// --- 🎨 Render Universe Items (Canva Style) ---
+async function renderUniverse() {
+  const mainContent = document.getElementById('mainContent');
+  // Check if we are on dashboard or a specific page to show items
+  mainContent.innerHTML = `
+    <div class="section-header">
+      <h2 class="section-header-title">✨ My Universe Feed</h2>
+    </div>
+    <div id="universe-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+      </div>
+  `;
+
+  const grid = document.getElementById('universe-grid');
+
+  try {
+    const snapshot = await db.collection("universe").orderBy("uploadedAt", "desc").get();
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const card = document.createElement('div');
+      card.className = 'note-card'; // We'll use your existing card style
+      
+      // Canva-style preview logic
+      let preview = '';
+      if(data.fileType.includes('image')) {
+        preview = `<img src="${data.fileData}" style="width:100%; border-radius:10px; margin-bottom:10px;">`;
+      } else {
+        preview = `<div style="height:100px; background:#333; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">📁 File</div>`;
+      }
+
+      card.innerHTML = `
+        ${preview}
+        <h3 style="color:var(--accent); margin:0;">${data.title}</h3>
+        <p style="font-size:12px; color:var(--text2);">${data.description || ''}</p>
+        <span style="font-size:10px; background:rgba(124,106,255,0.2); padding:2px 8px; border-radius:20px;">${data.category}</span>
+      `;
+      
+      grid.appendChild(card);
+
+      // Trigger Canva animation
+      setTimeout(() => card.classList.add('visible'), 100);
+    });
+  } catch (error) {
+    console.error("Error loading universe:", error);
+  }
+}
+
+// ================================================================
+// THEME TOGGLE — Dark / Light mode
+// ================================================================
+let isLight = localStorage.getItem('univ_theme') === 'light';
+function applyTheme() {
+  if (isLight) {
+    document.body.classList.add('light');
+    document.getElementById('themeBtn').textContent = '☀️';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('themeBtn').textContent = '🌙';
+  }
+}
+function toggleTheme() {
+  isLight = !isLight;
+  localStorage.setItem('univ_theme', isLight ? 'light' : 'dark');
+  applyTheme();
+}
+// Apply on load
+applyTheme();
+
+// ================================================================
+// PUBLIC / ADMIN MODE
+// currentUser আছে মানে Admin — সব দেখবে, সব করতে পারবে
+// currentUser নেই মানে Public — শুধু দেখবে, edit/add/delete পারবে না
+// ================================================================
+function applyAdminMode() {
+  const isAdmin = !!currentUser;
+  // admin-only elements দেখাও বা লুকাও
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+}
+
+// ================================================================
+// POMODORO TIMER — পড়ার timer
+// ================================================================
+let pomMinutes  = 25;
+let pomSeconds  = 0;
+let pomInterval = null;
+let pomRunning  = false;
+let pomSession  = 'study'; // study | break
+
+function togglePomodoro() {
+  const widget = document.getElementById('pomWidget');
+  const fab    = document.getElementById('pomFab');
+  widget.classList.toggle('open');
+  fab.style.display = widget.classList.contains('open') ? 'none' : 'flex';
+}
+
+function togglePomTimer() {
+  if (pomRunning) {
+    clearInterval(pomInterval);
+    pomRunning = false;
+    document.getElementById('pomStartBtn').textContent = '▶ Start';
+  } else {
+    pomRunning = true;
+    document.getElementById('pomStartBtn').textContent = '⏸ Pause';
+    pomInterval = setInterval(() => {
+      if (pomSeconds === 0) {
+        if (pomMinutes === 0) {
+          // Session done!
+          clearInterval(pomInterval);
+          pomRunning = false;
+          document.getElementById('pomStartBtn').textContent = '▶ Start';
+          if (pomSession === 'study') {
+            pomSession = 'break'; pomMinutes = 5; pomSeconds = 0;
+            document.getElementById('pomLabel').textContent = '☕ Break Time!';
+            alert('✅ Study session done! Take a 5 min break!');
+          } else {
+            pomSession = 'study'; pomMinutes = 25; pomSeconds = 0;
+            document.getElementById('pomLabel').textContent = '📖 Study Session';
+            alert('☕ Break done! Back to study!');
+          }
+          updatePomDisplay();
+          return;
+        }
+        pomMinutes--;
+        pomSeconds = 59;
+      } else {
+        pomSeconds--;
+      }
+      updatePomDisplay();
+    }, 1000);
+  }
+}
+
+function resetPomTimer() {
+  clearInterval(pomInterval);
+  pomRunning  = false;
+  pomMinutes  = 25; pomSeconds = 0;
+  pomSession  = 'study';
+  document.getElementById('pomStartBtn').textContent = '▶ Start';
+  document.getElementById('pomLabel').textContent    = '📖 Study Session';
+  updatePomDisplay();
+}
+
+function updatePomDisplay() {
+  document.getElementById('pomTime').textContent =
+    String(pomMinutes).padStart(2,'0') + ':' + String(pomSeconds).padStart(2,'0');
+}
+
+// ================================================================
+// SEARCH — subjects ও যোগ হয়েছে
+// ================================================================
 function doSearch(q) {
   const results = document.getElementById('searchResults');
   if (!q.trim()) {
     results.innerHTML = `<div class="empty-state"><div class="empty-icon">🔎</div><p>Type to search...</p></div>`;
     return;
   }
-  const ql = q.toLowerCase();
-  const found = [];
-
-  // Notes এ search
+  const ql = q.toLowerCase(), found = [];
   notes.forEach(n => {
     if (n.title.toLowerCase().includes(ql) || n.content.toLowerCase().includes(ql))
-      found.push({ icon:'📝', title: n.title, meta: `Note • ${n.date}`, page:'notes' });
+      found.push({icon:'📝', title:n.title, meta:`Note • ${n.date}`, page:'notes'});
   });
-  // Projects এ search
   projects.forEach(p => {
     if (p.title.toLowerCase().includes(ql) || (p.course||'').toLowerCase().includes(ql))
-      found.push({ icon:'🎓', title: p.title, meta: `Project • ${p.course}`, page:'projects' });
+      found.push({icon:'🎓', title:p.title, meta:`Project • ${p.course}`, page:'projects'});
   });
-  // Members এ search
   members.forEach(m => {
     if (m.name.toLowerCase().includes(ql) || (m.id||'').toLowerCase().includes(ql))
-      found.push({ icon:'👤', title: m.name, meta: `Team Member • ${m.id}`, page:'team' });
+      found.push({icon:'👤', title:m.name, meta:`Team Member • ${m.id}`, page:'team'});
   });
-  // Tasks এ search
   tasks.forEach(t => {
     if (t.title.toLowerCase().includes(ql))
-      found.push({ icon:'📅', title: t.title, meta: `Task • Due: ${t.due}`, page:'calendar' });
+      found.push({icon:'📅', title:t.title, meta:`Task • Due: ${t.due}`, page:'calendar'});
   });
-
-  if (found.length === 0) {
+  subjects.forEach(s => {
+    if (s.name.toLowerCase().includes(ql))
+      found.push({icon:'📚', title:s.name, meta:'Subject', page:'studyhub'});
+  });
+  // Vault search
+  Object.keys(vaultData).forEach(cat => {
+    (vaultData[cat]||[]).forEach(item => {
+      if (item.name.toLowerCase().includes(ql))
+        found.push({icon:'🔒', title:item.name, meta:`Vault • ${cat}`, page:'vault'});
+    });
+  });
+  if (!found.length) {
     results.innerHTML = `<div class="empty-state"><div class="empty-icon">😔</div><p>Nothing found for "${q}"</p></div>`;
     return;
   }
@@ -1880,4 +2591,3 @@ function doSearch(q) {
 
 </script>
 </body>
-</html>
