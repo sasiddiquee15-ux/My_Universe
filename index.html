@@ -861,30 +861,35 @@
      LOGIN PAGE
      এটাই প্রথম দেখাবে — সঠিক password দিলে dashboard খুলবে
 ============================================================ -->
-<div id="loginPage">
-  <div class="login-box">
-    <div class="login-icon">🌌</div>
-    <div class="login-title">My Universe</div>
-    <div class="login-sub">Sabiha's Personal Space</div>
+<!-- loginPage hidden — app সবসময় দেখাবে -->
+<div id="loginPage" style="display:none"></div>
 
-    <div class="input-group">
-      <label>Username</label>
-      <!-- তোমার username এখানে type করবে -->
-     <input type="email" id="loginUser" placeholder="yourmail@gmail.com " autocomplete="username"/>
+<!-- Admin Login Modal popup -->
+<div class="modal-overlay" id="adminLoginModal" style="z-index:9000">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <span class="modal-title">🔑 Admin Login</span>
+      <button class="modal-close" onclick="hideLoginModal()">✕</button>
     </div>
-    <div class="input-group">
-      <label>Password</label>
-      <!-- তোমার password এখানে type করবে -->
-       <input type="password" id="loginPass" placeholder="Password " autocomplete="current-password" onkeydown="if(event.key==='Enter') doLogin()"/>
-            
+    <div class="modal-body">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:40px;margin-bottom:6px">🌌</div>
+        <div style="font-size:13px;color:var(--text2)">Login to get admin access</div>
+      </div>
+      <div class="input-group">
+        <label>Email</label>
+        <input type="email" id="loginUser" placeholder="your@email.com" autocomplete="email"/>
+      </div>
+      <div class="input-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••"
+               onkeydown="if(event.key==='Enter') doLogin()"/>
+      </div>
+      <button class="btn-primary" id="loginBtn" onclick="doLogin()" style="margin-top:8px">
+        Enter My Universe ✦
+      </button>
+      <div class="login-error" id="loginError" style="display:none"></div>
     </div>
-
-    <label class="remember-row">
-      <input type="checkbox" id="rememberMe"/> Remember me
-    </label>
-
-    <button class="btn-primary" onclick="doLogin()">Enter My Universe ✦</button>
-    <div class="login-error" id="loginError">❌ Wrong username or password!</div>
   </div>
 </div>
 
@@ -952,14 +957,16 @@
 
    <div class="sidebar-bottom">
       
+      <!-- Admin এর জন্য Add to Universe button -->
       <div class="admin-only admin-action-container">
         <button class="add-universe-btn" onclick="openUploadModal()">
           <span class="icon">✨</span> Add to Universe
         </button>
       </div>
 
-      <div class="logout-btn" onclick="doLogout()">
-        <span class="icon">🚪</span> Logout
+      <!-- Login হলে Logout, না হলে Login দেখাবে -->
+      <div id="authBtn">
+        <!-- applyAdminMode এ dynamically set হবে -->
       </div>
       
     </div>
@@ -1356,26 +1363,30 @@ async function handleMegaUpload() {
 // ================================================================
 auth.onAuthStateChanged(user => {
   if (user) {
+    // ✅ ADMIN MODE — logged in
     currentUser = user;
-    // Login page লুকাও
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('app').classList.add('visible');
-    // Sidebar এ নাম দেখাও
     const name = user.displayName || user.email.split('@')[0];
-    document.getElementById('sidebarUser').textContent = 'Welcome, ' + name;
-    // Dashboard দেখাও
-    showPage('dashboard');
-    // Admin mode apply করো
-    setTimeout(applyAdminMode, 200);
-    // Date inputs
-    const today = new Date().toISOString().split('T')[0];
-    if (document.getElementById('noteDate')) document.getElementById('noteDate').value = today;
-    if (document.getElementById('taskDue'))  document.getElementById('taskDue').value  = today;
+    document.getElementById('sidebarUser').textContent = '🔑 ' + name;
   } else {
+    // ✅ PUBLIC MODE — not logged in, but app still shows!
     currentUser = null;
-    document.getElementById('loginPage').classList.remove('hidden');
-    document.getElementById('app').classList.remove('visible');
+    document.getElementById('sidebarUser').textContent = '👁️ Guest View';
   }
+
+  // সবসময় app দেখাও — login page লাগবে না
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+
+  // Dashboard দেখাও
+  showPage('dashboard');
+
+  // Admin/Public mode apply করো
+  setTimeout(applyAdminMode, 100);
+
+  // Date inputs
+  const today = new Date().toISOString().split('T')[0];
+  if (document.getElementById('noteDate')) document.getElementById('noteDate').value = today;
+  if (document.getElementById('taskDue'))  document.getElementById('taskDue').value  = today;
 });
 
 // ================================================================
@@ -1397,6 +1408,8 @@ async function doLogin() {
 
   try {
     await auth.signInWithEmailAndPassword(email, pass);
+    // Modal বন্ধ করো
+    hideLoginModal();
     // onAuthStateChanged বাকি কাজ করবে
   } catch (err) {
     if (btn) { btn.disabled = false; btn.textContent = 'Enter My Universe ✦'; }
@@ -1414,9 +1427,22 @@ async function doLogin() {
 }
 
 function showApp() {
-  document.getElementById('loginPage').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
   showPage('dashboard');
+}
+
+// Admin login modal দেখাও
+function showLoginModal() {
+  document.getElementById('adminLoginModal').classList.add('open');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  setTimeout(() => document.getElementById('loginUser').focus(), 100);
+}
+
+// Admin login modal বন্ধ করো
+function hideLoginModal() {
+  document.getElementById('adminLoginModal').classList.remove('open');
 }
 
 async function doLogout() {
@@ -2467,9 +2493,29 @@ applyTheme();
 // ================================================================
 function applyAdminMode() {
   const isAdmin = !!currentUser;
+
   // admin-only elements দেখাও বা লুকাও
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin ? '' : 'none';
+  });
+
+  // Sidebar এ Login/Logout button
+  const authBtn = document.getElementById('authBtn');
+  if (authBtn) {
+    if (isAdmin) {
+      authBtn.innerHTML = `<div class="logout-btn" onclick="doLogout()">
+        <span>🚪</span> Logout
+      </div>`;
+    } else {
+      authBtn.innerHTML = `<div class="logout-btn" style="color:var(--accent)" onclick="showLoginModal()">
+        <span>🔑</span> Admin Login
+      </div>`;
+    }
+  }
+
+  // Public banner দেখাও বা লুকাও
+  document.querySelectorAll('.public-banner').forEach(el => {
+    el.classList.toggle('show', !isAdmin);
   });
 }
 
