@@ -323,6 +323,7 @@
       border-radius: var(--radius); padding: 18px;
       cursor: pointer; transition: all 0.2s;
       position: relative; overflow: hidden;
+      opacity: 1 !important; transform: none !important;
     }
     .note-card::before {
       content: ''; position: absolute;
@@ -1296,17 +1297,117 @@ let currentUser = null;
 // ================================================================
 // DATA — localStorage
 // ================================================================
-let notes    = JSON.parse(localStorage.getItem('univ_notes')    || '[]');
-let members  = JSON.parse(localStorage.getItem('univ_members')  || '[]');
-let projects = JSON.parse(localStorage.getItem('univ_projects') || '[]');
-let tasks    = JSON.parse(localStorage.getItem('univ_tasks')    || '[]');
-let subjects = JSON.parse(localStorage.getItem('univ_subjects') || '[]');
+// ================================================================
+// V2 DATA — Firestore এ store হয়
+// In-memory arrays — Firestore থেকে load হবে
+// ================================================================
+let notes    = [];
+let members  = [];
+let projects = [];
+let tasks    = [];
+let subjects = [];
 
-function saveNotes()    { localStorage.setItem('univ_notes',    JSON.stringify(notes));    }
-function saveMembers()  { localStorage.setItem('univ_members',  JSON.stringify(members));  }
-function saveProjects() { localStorage.setItem('univ_projects', JSON.stringify(projects)); }
-function saveTasks()    { localStorage.setItem('univ_tasks',    JSON.stringify(tasks));    }
-function saveSubjects() { localStorage.setItem('univ_subjects', JSON.stringify(subjects)); }
+// Cloudinary config
+const CLOUDINARY_CLOUD = 'dttb25hok';
+const CLOUDINARY_PRESET = 'My Universe';
+
+// ================================================================
+// FIRESTORE SAVE FUNCTIONS
+// প্রতিটা item এর জন্য আলাদা document
+// ================================================================
+
+// User এর Firestore collection path
+function userCol(col) {
+  // Public data — সবাই read করতে পারবে, শুধু admin write করতে পারবে
+  return db.collection('universe_data').doc('shared').collection(col);
+}
+
+// Notes
+async function saveNotes() {
+  // Notes পুরো array একটা document এ রাখবো (simple)
+  await db.collection('universe_data').doc('notes').set({ items: notes });
+}
+// Members
+async function saveMembers() {
+  await db.collection('universe_data').doc('members').set({ items: members });
+}
+// Projects
+async function saveProjects() {
+  await db.collection('universe_data').doc('projects').set({ items: projects });
+}
+// Tasks
+async function saveTasks() {
+  await db.collection('universe_data').doc('tasks').set({ items: tasks });
+}
+// Subjects
+async function saveSubjects() {
+  await db.collection('universe_data').doc('subjects').set({ items: subjects });
+}
+// Profile
+async function saveProfileToFirestore(data) {
+  await db.collection('universe_data').doc('profile').set(data);
+}
+// Vault metadata (file URLs from Cloudinary)
+async function saveVaultToFirestore(vaultData) {
+  await db.collection('universe_data').doc('vault').set(vaultData);
+}
+
+// ================================================================
+// LOAD ALL DATA FROM FIRESTORE
+// App start হলে এটা call হবে
+// ================================================================
+async function loadAllDataFromFirestore() {
+  try {
+    // Show loading
+    const mc = document.getElementById('mainContent');
+    if (mc) mc.innerHTML = '<div class="empty-state"><div class="empty-icon" style="animation:float 1s ease-in-out infinite">🌌</div><p>Loading your universe...</p></div>';
+
+    // Parallel load করো
+    const [notesDoc, membersDoc, projectsDoc, tasksDoc, subjectsDoc, profileDoc, vaultDoc] = await Promise.all([
+      db.collection('universe_data').doc('notes').get(),
+      db.collection('universe_data').doc('members').get(),
+      db.collection('universe_data').doc('projects').get(),
+      db.collection('universe_data').doc('tasks').get(),
+      db.collection('universe_data').doc('subjects').get(),
+      db.collection('universe_data').doc('profile').get(),
+      db.collection('universe_data').doc('vault').get(),
+    ]);
+
+    // Arrays load করো
+    notes    = notesDoc.exists    ? (notesDoc.data().items    || []) : [];
+    members  = membersDoc.exists  ? (membersDoc.data().items  || []) : [];
+    projects = projectsDoc.exists ? (projectsDoc.data().items || []) : [];
+    tasks    = tasksDoc.exists    ? (tasksDoc.data().items    || []) : [];
+    subjects = subjectsDoc.exists ? (subjectsDoc.data().items || []) : [];
+
+    // Profile load করো
+    if (profileDoc.exists) {
+      profileData = profileDoc.data();
+    }
+
+    // Vault load করো
+    if (vaultDoc.exists) {
+      const vd = vaultDoc.data();
+      ['photos','videos','audio','documents','memories','private'].forEach(k => {
+        if (!vaultData[k]) vaultData[k] = [];
+        if (vd[k]) vaultData[k] = vd[k];
+      });
+    }
+
+    console.log('✅ Data loaded from Firestore:', { notes: notes.length, projects: projects.length });
+
+    // Dashboard দেখাও
+    showPage('dashboard', null);
+    setTimeout(applyAdminMode, 100);
+
+  } catch (err) {
+    console.error('❌ Firestore load error:', err);
+    // Firestore fail হলে empty দিয়ে চলো
+    showPage('dashboard', null);
+    setTimeout(applyAdminMode, 100);
+  }
+}
+
 
 // ================================================================
 // UPLOAD MODAL FUNCTIONS — তোমার নিজের লেখা ✅ রাখা হয়েছে
@@ -1362,27 +1463,24 @@ async function handleMegaUpload() {
 // AUTH STATE — ✅ একটাই onAuthStateChanged
 // Login হলে app দেখাবে, না হলে login page দেখাবে
 // ================================================================
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async (user) => {
   if (user) {
-    // ✅ ADMIN MODE — logged in
+    // ✅ ADMIN MODE
     currentUser = user;
     const name = user.displayName || user.email.split('@')[0];
     document.getElementById('sidebarUser').textContent = '🔑 ' + name;
   } else {
-    // ✅ PUBLIC MODE — not logged in, but app still shows!
+    // ✅ GUEST MODE — app দেখাবে, login লাগবে না
     currentUser = null;
     document.getElementById('sidebarUser').textContent = '👁️ Guest View';
   }
 
-  // সবসময় app দেখাও — login page লাগবে না
+  // App দেখাও
   document.getElementById('loginPage').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
 
-  // Dashboard দেখাও
-  showPage('dashboard', null);
-
-  // Admin/Public mode apply করো
-  setTimeout(applyAdminMode, 100);
+  // Firestore থেকে সব data load করো
+  await loadAllDataFromFirestore();
 
   // Date inputs
   const today = new Date().toISOString().split('T')[0];
@@ -1578,6 +1676,7 @@ function renderDashboard() {
 // NOTES — notes & journal section
 // ================================================================
 function renderNotes() {
+  const isAdmin = !!currentUser;
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
       <div class="page-header">
@@ -1589,45 +1688,69 @@ function renderNotes() {
           <span>🔎</span>
           <input type="text" placeholder="Search notes..." oninput="filterNotes(this.value)" id="noteSearch"/>
         </div>
-        <button class="btn-add" onclick="openNoteModal()">➕ New Note</button>
+        ${isAdmin ? `<button class="btn-add" onclick="openNoteModal()">➕ New Note</button>` : ''}
       </div>
       <div class="notes-grid" id="notesGrid"></div>
     </div>`;
   renderNoteCards(notes);
 }
-db.collection("notes").orderBy("timestamp", "desc").onSnapshot((snapshot) => {
-  notes = snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
-  
-  // Jodi ekhon Notes page open thake, tobei card gulo update korbo
-  if (document.getElementById('notesGrid')) {
-     renderNoteCards(notes);
-  }
-});
+// Notes are stored in localStorage — no Firestore listener needed
 
 function renderNoteCards(list) {
   const grid = document.getElementById('notesGrid');
   if (!grid) return;
-  if (list.length === 0) {
+  const isAdmin = !!currentUser;
+
+  if (!list || list.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
       <div class="empty-icon">📝</div>
-      <p>No notes yet. Click "New Note" to start!</p></div>`;
+      <p>${isAdmin ? 'No notes yet. Click New Note to start!' : 'No notes yet.'}</p></div>`;
     return;
   }
-  grid.innerHTML = list.map((n, i) => `
-    <div class="note-card" onclick="openNoteEdit(${i})">
-      <div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:16px;color:var(--text2)"
-           onclick="event.stopPropagation();deleteNote(${notes.indexOf(n)})">🗑️</div>
+  grid.innerHTML = list.map((n, listIdx) => {
+    // realIdx — notes array তে actual position খোঁজো
+    const realIdx = notes.findIndex(x => x === n || (x.title === n.title && x.date === n.date && x.content === n.content));
+    const idx = realIdx >= 0 ? realIdx : listIdx;
+    return `
+    <div class="note-card" onclick="viewNote(${idx})" style="opacity:1;transform:none">
       <div class="note-card-title">${n.title}</div>
-      <div class="note-card-preview">${n.content.substring(0,100)}${n.content.length>100?'...':''}</div>
+      <div class="note-card-preview">${(n.content||'').substring(0,120)}${(n.content||'').length>120?'...':''}</div>
       <div class="note-card-footer">
-        <span class="mood-tag">${n.mood}</span>
-        <span style="font-family:var(--mono)">${n.date}</span>
+        <span class="mood-tag">${n.mood||''}</span>
+        <span style="font-family:var(--mono)">${n.date||''}</span>
       </div>
-    </div>`).join('');
+      ${isAdmin ? `<div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <button onclick="event.stopPropagation();openNoteEdit(${idx})" style="flex:1;padding:5px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:8px;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font)">✏️ Edit</button>
+        <button onclick="event.stopPropagation();deleteNote(${idx})" style="flex:1;padding:5px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:8px;color:#ff6b6b;cursor:pointer;font-size:12px;font-family:var(--font)">🗑️ Delete</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
+
+function viewNote(i) {
+  const n = notes[i];
+  if (!n) return;
+  const isAdmin = !!currentUser;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:1">
+        <div>
+          <div style="font-size:18px;font-weight:700">${n.title}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:3px">${n.mood||''} • ${n.date||''}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${isAdmin ? `<button onclick="this.closest('[style*=fixed]').remove();openNoteEdit(${i})" style="padding:6px 14px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:8px;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font)">✏️ Edit</button>` : ''}
+          <button onclick="this.closest('[style*=fixed]').remove()" style="width:32px;height:32px;border-radius:8px;background:var(--bg3);border:none;color:var(--text2);cursor:pointer;font-size:16px">✕</button>
+        </div>
+      </div>
+      <div style="padding:24px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--text)">${n.content||''}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if(e.target===overlay) overlay.remove(); });
+}
+
 
 function filterNotes(q) {
   const filtered = notes.filter(n =>
@@ -1663,7 +1786,7 @@ function closeNoteModal() {
   document.getElementById('noteModal').classList.remove('open');
 }
 
-function saveNote() {
+async function saveNote() {
   const title   = document.getElementById('noteTitle').value.trim();
   const content = document.getElementById('noteContent').value.trim();
   const mood    = document.getElementById('noteMood').value;
@@ -1671,31 +1794,23 @@ function saveNote() {
 
   if (!title) { alert('Please enter a title!'); return; }
 
-  const noteObj = { title, content, mood, date, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+  const noteObj = { title, content, mood, date };
 
   if (editingNoteIndex >= 0) {
-    // Edit mode e thakle shei specific document update hobe
-    // Note: Edit logic-er jonno doc ID dorkar hoy, niche ami shohoj bhabe dilaam:
-    const docId = notes[editingNoteIndex].id; 
-    db.collection("notes").doc(docId).update(noteObj).then(() => {
-      console.log("Updated in Cloud!");
-    });
+    notes[editingNoteIndex] = noteObj;
   } else {
-    // Notun note Firebase-e save hobe
-    db.collection("notes").add(noteObj).then(() => {
-      console.log("Saved to Cloud!");
-    });
+    notes.unshift(noteObj);
   }
 
+  await saveNotes();  // Firestore এ save
   closeNoteModal();
-  // renderNotes() ekhon ar dorkar hobe na jodi apni onSnapshot use koren, 
-  // karon Firebase nijei auto update kore dibe screen.
+  renderNotes();
 }
 
-function deleteNote(i) {
+async function deleteNote(i) {
   if (confirm('Delete this note?')) {
     notes.splice(i, 1);
-    saveNotes();
+    await saveNotes();
     renderNotes();
   }
 }
@@ -1704,16 +1819,14 @@ function deleteNote(i) {
 // STUDY HUB
 // ================================================================
 function renderStudyHub() {
-  const defaultSubjects = subjects.length ? subjects : [];
+  const isAdmin = !!currentUser;
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
       <div class="page-header">
         <div class="page-title">📚 Study Hub</div>
         <div class="page-sub">All your subjects and study materials</div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn-add" onclick="document.getElementById('subjectModal').classList.add('open')">➕ Add Subject</button>
-      </div>
+      ${isAdmin ? `<div style="display:flex;justify-content:flex-end;margin-bottom:20px"><button class="btn-add" onclick="document.getElementById('subjectModal').classList.add('open')">➕ Add Subject</button></div>` : ''}
       <div class="subject-grid" id="subjectGrid"></div>
     </div>`;
   renderSubjectCards();
@@ -1722,38 +1835,28 @@ function renderStudyHub() {
 function renderSubjectCards() {
   const grid = document.getElementById('subjectGrid');
   if (!grid) return;
-  if (subjects.length === 0) {
+  const isAdmin = !!currentUser;
+
+  if (!subjects.length) {
     grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-icon">📚</div>
-      <p>No subjects yet. Add your first subject!</p></div>`;
+      <div class="empty-icon">📚</div><p>No subjects yet${isAdmin?' — click Add Subject to start!':'.'}</p></div>`;
     return;
   }
-  const isAdmin = !!currentUser;
   grid.innerHTML = subjects.map((s, i) => `
     <div class="subject-card">
-      ${isAdmin ? `<div style="position:absolute;top:12px;right:12px;cursor:pointer;font-size:14px;color:var(--text2)" onclick="deleteSubject(${i})">🗑️</div>` : ''}
-      <div class="subject-emoji">${s.emoji || '📖'}</div>
+      <div class="subject-emoji">${s.emoji||'📖'}</div>
       <div class="subject-name">${s.name}</div>
       <div class="subject-count">${(s.files||[]).length} file${(s.files||[]).length!==1?'s':''}</div>
-      <div class="subject-tags">
-        ${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}
-      </div>
-      ${(s.files||[]).length ? `
-        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
-          ${s.files.map((f,fi) => `
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-              <span style="font-size:12px">📎</span>
-              <a href="${f.data}" download="${f.name}" style="font-size:11px;color:var(--accent);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</a>
-            </div>`).join('')}
-        </div>` : ''}
-      ${s.link ? `
-        <div style="margin-top:6px">
-          <a href="${s.link}" target="_blank" style="font-size:11px;color:var(--accent2);text-decoration:none">
-            🔗 ${s.linkDesc || s.link}
-          </a>
-        </div>` : ''}
+      <div class="subject-tags">${(s.tags||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      ${(s.files||[]).length?`<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px">${s.files.map(f=>`<div style="margin-bottom:4px"><a href="${f.data}" download="${f.name}" style="font-size:11px;color:var(--accent);text-decoration:none">📎 ${f.name}</a></div>`).join('')}</div>`:''}
+      ${s.link?`<div style="margin-top:6px"><a href="${s.link}" target="_blank" style="font-size:11px;color:var(--accent2);text-decoration:none">🔗 ${s.linkDesc||s.link}</a></div>`:''}
+      ${isAdmin?`<div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid var(--border);padding-top:8px">
+        <button onclick="editSubject(${i})" style="flex:1;padding:5px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:8px;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font)">✏️ Edit</button>
+        <button onclick="deleteSubject(${i})" style="flex:1;padding:5px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:8px;color:#ff6b6b;cursor:pointer;font-size:12px;font-family:var(--font)">🗑️ Delete</button>
+      </div>`:''}
     </div>`).join('');
 }
+
 
 async function saveSubject() {
   const name  = document.getElementById('subjectName').value.trim();
@@ -1761,21 +1864,42 @@ async function saveSubject() {
   const tags  = document.getElementById('subjectTags').value.split(',').map(t=>t.trim()).filter(Boolean);
   if (!name) { alert('Enter subject name!'); return; }
 
-  const fileInput = document.getElementById('subjectFiles');
-  const files     = await readFilesAsBase64(fileInput);
+  // Cloudinary এ files upload করো
+  let newFiles = [];
+  const subFileInput = document.getElementById('subjectFiles');
+  if (subFileInput && subFileInput.files.length) {
+    for (const file of Array.from(subFileInput.files)) {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', CLOUDINARY_PRESET);
+        fd.append('folder', 'my_universe/subjects');
+        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,{method:'POST',body:fd});
+        const d = await r.json();
+        newFiles.push({ name:file.name, type:file.type, size:file.size, data:d.secure_url, publicId:d.public_id });
+      } catch(e) { console.error('Subject file upload error:', e); }
+    }
+  }
+  const editIdx  = window._editSubjectIdx;
 
-  subjects.push({
-    name, emoji, tags, notes: 0,
-    files:    files,
-    link:     document.getElementById('subjectLink').value.trim(),
-    linkDesc: document.getElementById('subjectLinkDesc').value.trim(),
-  });
-  saveSubjects();
+  if (editIdx !== undefined && editIdx >= 0) {
+    subjects[editIdx] = { ...subjects[editIdx], name, emoji, tags,
+      link:     document.getElementById('subjectLink').value.trim(),
+      linkDesc: document.getElementById('subjectLinkDesc').value.trim(),
+      files:    [...(subjects[editIdx].files||[]), ...newFiles],
+    };
+    window._editSubjectIdx = undefined;
+  } else {
+    subjects.push({ name, emoji, tags, notes:0, files: newFiles,
+      link:     document.getElementById('subjectLink').value.trim(),
+      linkDesc: document.getElementById('subjectLinkDesc').value.trim(),
+    });
+  }
+  await saveSubjects();
   document.getElementById('subjectModal').classList.remove('open');
-  ['subjectName','subjectEmoji','subjectTags','subjectLink','subjectLinkDesc']
-    .forEach(id => document.getElementById(id).value = '');
-  document.getElementById('subjectFiles').value = '';
-  document.getElementById('subjectFilesPreview').style.display = 'none';
+  ['subjectName','subjectEmoji','subjectTags','subjectLink','subjectLinkDesc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('subjectFiles').value='';
+  document.getElementById('subjectFilesPreview').style.display='none';
   renderSubjectCards();
 }
 
@@ -1786,6 +1910,29 @@ function deleteSubject(i) {
 // ================================================================
 // UNIVERSITY PROJECTS
 // ================================================================
+function openProjectModal() {
+  window._editProjectIdx = undefined;
+  // Reset all fields
+  ['projTitle','projCourse','projTeacher','projLink','projLinkDesc','projNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const d = document.getElementById('projDeadline');
+  if (d) d.value = '';
+  const t = document.getElementById('projType');
+  if (t) t.value = 'Term Paper';
+  const s = document.getElementById('projStatus');
+  if (s) s.value = 'Ongoing';
+  const fp = document.getElementById('projFilesPreview');
+  if (fp) fp.style.display = 'none';
+  document.getElementById('projectModal').classList.add('open');
+}
+
+function closeProjectModal() {
+  document.getElementById('projectModal').classList.remove('open');
+  window._editProjectIdx = undefined;
+}
+
 function renderProjects() {
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
@@ -1804,48 +1951,43 @@ function renderProjects() {
 function renderProjectsList() {
   const list = document.getElementById('projectsList');
   if (!list) return;
-  const typeIcons = { 'Term Paper':'📄', 'Programming Project':'💻', 'Presentation':'📊', 'Research Paper':'🔬', 'Team Submission':'👥' };
-  const statusClass = { 'Ongoing':'badge-ongoing', 'Done':'badge-done', 'Pending':'badge-pending' };
-
-  if (projects.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎓</div><p>No projects yet!</p></div>`;
+  const isAdmin = !!currentUser;
+  const icons   = {'Term Paper':'📄','Programming Project':'💻','Presentation':'📊','Research Paper':'🔬','Team Submission':'👥'};
+  const badges  = {'Ongoing':'badge-ongoing','Done':'badge-done','Pending':'badge-pending'};
+  if (!projects.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🎓</div><p>No projects yet${isAdmin?'!':'.'}</p></div>`;
     return;
   }
-  const isAdminP = !!currentUser;
-  list.innerHTML = projects.map((p, i) => `
+  list.innerHTML = projects.map((p,i) => `
     <div class="project-item" style="flex-direction:column;align-items:flex-start;gap:10px">
       <div style="display:flex;align-items:center;gap:16px;width:100%">
-        <div class="project-icon">${typeIcons[p.type]||'📁'}</div>
+        <div class="project-icon">${icons[p.type]||'📁'}</div>
         <div class="project-info">
           <div class="project-name">${p.title}</div>
           <div class="project-meta">${p.course||'—'} • ${p.teacher||'—'} • Due: ${p.deadline||'—'}</div>
         </div>
-        <span class="project-badge ${statusClass[p.status]||'badge-pending'}" style="margin-left:auto">${p.status}</span>
-        ${isAdminP ? `<span style="cursor:pointer;color:var(--text2)" onclick="deleteProject(${i})">🗑️</span>` : ''}
+        <span class="project-badge ${badges[p.status]||'badge-pending'}" style="margin-left:auto">${p.status}</span>
       </div>
-      ${(p.files||[]).length || p.link ? `
+      ${(p.files||[]).length||p.link?`
         <div style="padding:10px 12px;background:var(--bg3);border-radius:10px;width:100%;display:flex;flex-wrap:wrap;gap:8px">
-          ${(p.files||[]).map(f => `
-            <a href="${f.data}" download="${f.name}" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:20px;font-size:11px;color:var(--accent);text-decoration:none">
-              📎 ${f.name}
-            </a>`).join('')}
-          ${p.link ? `
-            <a href="${p.link}" target="_blank" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(255,106,176,0.1);border:1px solid rgba(255,106,176,0.2);border-radius:20px;font-size:11px;color:var(--accent2);text-decoration:none">
-              🔗 ${p.linkDesc || 'Open Link'}
-            </a>` : ''}
-        </div>` : ''}
-      ${p.notes ? `<div style="font-size:12px;color:var(--text2);padding:0 4px">${p.notes}</div>` : ''}
+          ${(p.files||[]).map(f=>`<a href="${f.data}" download="${f.name}" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:20px;font-size:11px;color:var(--accent);text-decoration:none">📎 ${f.name}</a>`).join('')}
+          ${p.link?`<a href="${p.link}" target="_blank" style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(255,106,176,0.1);border:1px solid rgba(255,106,176,0.2);border-radius:20px;font-size:11px;color:var(--accent2);text-decoration:none">🔗 ${p.linkDesc||'Open Link'}</a>`:''}
+        </div>`:''}
+      ${p.notes?`<div style="font-size:12px;color:var(--text2);padding:0 4px">${p.notes}</div>`:''}
+      ${isAdmin?`<div style="display:flex;gap:8px;width:100%">
+        <button onclick="editProject(${i})" style="flex:1;padding:6px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:8px;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font)">✏️ Edit</button>
+        <button onclick="deleteProject(${i})" style="flex:1;padding:6px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:8px;color:#ff6b6b;cursor:pointer;font-size:12px;font-family:var(--font)">🗑️ Delete</button>
+      </div>`:''}
     </div>`).join('');
 }
 
-function openProjectModal() {
-  document.getElementById('projectModal').classList.add('open');
-}
-function closeProjectModal() {
-  document.getElementById('projectModal').classList.remove('open');
-}
+
+// ================================================================
+// FILE HELPER FUNCTIONS
+// ================================================================
 function previewProjFiles(input) {
   const preview = document.getElementById('projFilesPreview');
+  if (!preview) return;
   if (input.files.length) {
     preview.style.display = 'block';
     preview.innerHTML = Array.from(input.files).map(f =>
@@ -1856,6 +1998,7 @@ function previewProjFiles(input) {
 
 function previewSubjectFiles(input) {
   const preview = document.getElementById('subjectFilesPreview');
+  if (!preview) return;
   if (input.files.length) {
     preview.style.display = 'block';
     preview.innerHTML = Array.from(input.files).map(f =>
@@ -1864,18 +2007,31 @@ function previewSubjectFiles(input) {
   }
 }
 
-// Files কে Base64 array তে convert করার helper
+// Files কে Base64 array তে convert করা
 function readFilesAsBase64(fileInput) {
   return new Promise((resolve) => {
-    const files = Array.from(fileInput.files || []);
-    if (!files.length) { resolve([]); return; }
+    if (!fileInput || !fileInput.files || !fileInput.files.length) {
+      resolve([]); return;
+    }
+    const files = Array.from(fileInput.files);
     const results = [];
     let done = 0;
     files.forEach(file => {
+      // Large file warning
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`"${file.name}" is too large (max 5MB). Skipping.`);
+        done++;
+        if (done === files.length) resolve(results);
+        return;
+      }
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         results.push({ name: file.name, type: file.type, size: file.size, data: reader.result });
+        done++;
+        if (done === files.length) resolve(results);
+      };
+      reader.onerror = () => {
         done++;
         if (done === files.length) resolve(results);
       };
@@ -1885,33 +2041,62 @@ function readFilesAsBase64(fileInput) {
 
 async function saveProject() {
   const title = document.getElementById('projTitle').value.trim();
-  if (!title) { alert('Enter project title!'); return; }
+  if (!title) { alert('Please add a project title!'); return; }
 
-  // Files পড়ো
+  // নতুন files পড়ো (থাকলে)
   const fileInput = document.getElementById('projFiles');
-  const files = await readFilesAsBase64(fileInput);
+  let newFiles = [];
+  if (fileInput && fileInput.files.length) {
+    // Cloudinary এ upload করো
+    for (const file of Array.from(fileInput.files)) {
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('upload_preset', CLOUDINARY_PRESET);
+        fd.append('folder', 'my_universe/projects');
+        const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, {method:'POST',body:fd});
+        const d = await r.json();
+        newFiles.push({ name: file.name, type: file.type, size: file.size, data: d.secure_url, publicId: d.public_id });
+      } catch(e) { console.error('File upload error:', file.name, e); }
+    }
+  }
 
-  projects.unshift({
+  const editIdx = window._editProjectIdx;
+
+  const data = {
     title,
-    course:    document.getElementById('projCourse').value,
-    teacher:   document.getElementById('projTeacher').value,
-    deadline:  document.getElementById('projDeadline').value,
-    type:      document.getElementById('projType').value,
-    status:    document.getElementById('projStatus').value,
-    notes:     document.getElementById('projNotes').value,
-    files:     files,
-    link:      document.getElementById('projLink').value.trim(),
-    linkDesc:  document.getElementById('projLinkDesc').value.trim(),
-  });
-  saveProjects();
+    course:   (document.getElementById('projCourse')?.value   || ''),
+    teacher:  (document.getElementById('projTeacher')?.value  || ''),
+    deadline: (document.getElementById('projDeadline')?.value || ''),
+    type:     (document.getElementById('projType')?.value     || 'Term Paper'),
+    status:   (document.getElementById('projStatus')?.value   || 'Ongoing'),
+    notes:    (document.getElementById('projNotes')?.value    || ''),
+    link:     (document.getElementById('projLink')?.value     || '').trim(),
+    linkDesc: (document.getElementById('projLinkDesc')?.value || '').trim(),
+  };
+
+  if (editIdx !== undefined && editIdx >= 0 && editIdx < projects.length) {
+    // Edit mode — পুরনো files রাখো, নতুন files যোগ করো
+    data.files = [...(projects[editIdx].files || []), ...newFiles];
+    projects[editIdx] = data;
+    window._editProjectIdx = undefined;
+  } else {
+    // New project
+    data.files = newFiles;
+    projects.unshift(data);
+  }
+
+  await saveProjects();
   closeProjectModal();
-  // Reset file inputs
-  document.getElementById('projFiles').value = '';
-  document.getElementById('projFilesPreview').style.display = 'none';
-  document.getElementById('projLink').value = '';
-  document.getElementById('projLinkDesc').value = '';
+
+  // Reset file input
+  if (fileInput) fileInput.value = '';
+  const fp = document.getElementById('projFilesPreview');
+  if (fp) fp.style.display = 'none';
+
   renderProjectsList();
 }
+
 function deleteProject(i) {
   if (confirm('Delete this project?')) { projects.splice(i,1); saveProjects(); renderProjectsList(); }
 }
@@ -1920,15 +2105,14 @@ function deleteProject(i) {
 // TEAM MANAGER
 // ================================================================
 function renderTeam() {
+  const isAdmin = !!currentUser;
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
       <div class="page-header">
         <div class="page-title">👥 Team Manager</div>
         <div class="page-sub">Your team members and their info</div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn-add" onclick="openMemberModal()">➕ Add Member</button>
-      </div>
+      ${isAdmin ? `<div style="display:flex;justify-content:flex-end;margin-bottom:20px"><button class="btn-add" onclick="openMemberModal()">➕ Add Member</button></div>` : ''}
       <div class="team-grid" id="teamGrid"></div>
     </div>`;
   renderTeamCards();
@@ -1937,47 +2121,57 @@ function renderTeam() {
 function renderTeamCards() {
   const grid = document.getElementById('teamGrid');
   if (!grid) return;
-  if (members.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-icon">👥</div><p>No team members yet!</p></div>`;
+  const isAdmin = !!currentUser;
+  if (!members.length) {
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👥</div><p>No team members yet${isAdmin?'!':'.'}</p></div>`;
     return;
   }
-  grid.innerHTML = members.map((m, i) => `
+  grid.innerHTML = members.map((m,i) => `
     <div class="member-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="member-avatar">${m.name.charAt(0).toUpperCase()}</div>
-        <span style="cursor:pointer;color:var(--text2)" onclick="deleteMember(${i})">🗑️</span>
-      </div>
+      <div class="member-avatar">${m.name.charAt(0).toUpperCase()}</div>
       <div class="member-name">${m.name}</div>
-      <div class="member-id">${m.id}</div>
+      <div class="member-id">${m.id||'—'}</div>
       <div class="member-info">
         <div class="member-info-row"><span>📞</span><span>${m.phone||'—'}</span></div>
         <div class="member-info-row"><span>✉️</span><span>${m.email||'—'}</span></div>
         ${m.skills?`<div class="member-info-row"><span>💡</span><span>${m.skills}</span></div>`:''}
       </div>
       <span class="member-role">${m.role}</span>
+      ${isAdmin?`<div style="display:flex;gap:8px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+        <button onclick="editMember(${i})" style="flex:1;padding:5px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:8px;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font)">✏️ Edit</button>
+        <button onclick="deleteMember(${i})" style="flex:1;padding:5px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:8px;color:#ff6b6b;cursor:pointer;font-size:12px;font-family:var(--font)">🗑️ Delete</button>
+      </div>`:''}
     </div>`).join('');
 }
 
 function openMemberModal() { document.getElementById('memberModal').classList.add('open'); }
 function closeMemberModal() { document.getElementById('memberModal').classList.remove('open'); }
-function saveMember() {
+async function saveMember() {
   const name = document.getElementById('memberName').value.trim();
   if (!name) { alert('Enter member name!'); return; }
-  members.push({
-    name, id: document.getElementById('memberId').value,
-    phone: document.getElementById('memberPhone').value,
-    email: document.getElementById('memberEmail').value,
-    role: document.getElementById('memberRole').value,
+
+  const editIdx = window._editMemberIdx;
+  const data = {
+    name, id:     document.getElementById('memberId').value,
+    phone:  document.getElementById('memberPhone').value,
+    email:  document.getElementById('memberEmail').value,
+    role:   document.getElementById('memberRole').value,
     skills: document.getElementById('memberSkills').value,
-    notes: document.getElementById('memberNotes').value,
-  });
-  saveMembers();
+    notes:  document.getElementById('memberNotes').value,
+  };
+
+  if (editIdx !== undefined && editIdx >= 0) {
+    members[editIdx] = data;
+    window._editMemberIdx = undefined;
+  } else {
+    members.push(data);
+  }
+  await saveMembers();
   closeMemberModal();
-  ['memberName','memberId','memberPhone','memberEmail','memberSkills','memberNotes']
-    .forEach(id => document.getElementById(id).value = '');
+  ['memberName','memberId','memberPhone','memberEmail','memberSkills','memberNotes'].forEach(id=>document.getElementById(id).value='');
   renderTeamCards();
 }
+
 function deleteMember(i) {
   if (confirm('Remove this member?')) { members.splice(i,1); saveMembers(); renderTeamCards(); }
 }
@@ -2092,7 +2286,7 @@ const VAULT_CATS = [
   { key:'memories',  icon:'💝', label:'Memories',  accept:'image/*,video/*', public:true  },
   { key:'private',   icon:'🔐', label:'Private',   accept:'*',             public:false },
 ];
-function saveVault() { localStorage.setItem('univ_vault', JSON.stringify(vaultData)); }
+// saveVault → saveVaultToFirestore (defined above)
 if (!vaultData.photos)    vaultData.photos    = [];
 if (!vaultData.videos)    vaultData.videos    = [];
 if (!vaultData.audio)     vaultData.audio     = [];
@@ -2183,7 +2377,10 @@ function renderVaultItems(catKey) {
       <div class="vault-media-info">
         <div class="vault-media-name">${item.name}</div>
         <div class="vault-media-desc">${item.desc || ''}</div>
-        ${isAdmin ? `<div style="margin-top:8px"><span onclick="event.stopPropagation();deleteVaultItem('${catKey}',${i})" style="font-size:12px;color:#ff6b6b;cursor:pointer">🗑️ Delete</span></div>` : ''}
+        ${isAdmin ? `<div style="display:flex;gap:6px;margin-top:8px">
+          <button onclick="event.stopPropagation();editVaultItem('${catKey}',${i})" style="flex:1;padding:4px;background:rgba(124,106,255,0.1);border:1px solid rgba(124,106,255,0.2);border-radius:6px;color:var(--accent);cursor:pointer;font-size:11px;font-family:var(--font)">✏️ Edit</button>
+          <button onclick="event.stopPropagation();deleteVaultItem('${catKey}',${i})" style="flex:1;padding:4px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;color:#ff6b6b;cursor:pointer;font-size:11px;font-family:var(--font)">🗑️ Delete</button>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -2225,7 +2422,7 @@ function previewVaultFile(input) {
   }
 }
 
-// Upload vault item — Base64 save to localStorage
+// Upload vault item — Cloudinary এ upload, URL Firestore এ save
 async function uploadVaultItem() {
   const file  = document.getElementById('vaultFile').files[0];
   const name  = document.getElementById('vaultItemName').value.trim();
@@ -2235,34 +2432,53 @@ async function uploadVaultItem() {
   if (!file) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please select a file!'; msgEl.style.display='block'; return; }
   if (!name) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please enter a name!'; msgEl.style.display='block'; return; }
 
-  msgEl.style.color='var(--accent3)'; msgEl.textContent='⏳ Uploading...'; msgEl.style.display='block';
+  msgEl.style.color='var(--accent3)'; msgEl.textContent='⏳ Uploading to cloud...'; msgEl.style.display='block';
 
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onload = () => {
+  try {
+    // Cloudinary এ upload করো
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    formData.append('folder', 'my_universe/' + vaultUploadCat);
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
+      { method: 'POST', body: formData }
+    );
+
+    if (!res.ok) throw new Error('Upload failed');
+    const data = await res.json();
+
+    // Cloudinary URL Firestore এ save করো
     if (!vaultData[vaultUploadCat]) vaultData[vaultUploadCat] = [];
     vaultData[vaultUploadCat].push({
-      name, desc, data: reader.result,
-      type: file.type, size: file.size,
+      name, desc,
+      data:      data.secure_url,  // Cloudinary URL
+      publicId:  data.public_id,
+      type:      file.type,
+      size:      file.size,
       uploadedAt: new Date().toISOString()
     });
-    saveVault();
-    msgEl.style.color='var(--accent3)'; msgEl.textContent='✅ Uploaded!';
+
+    await saveVaultToFirestore(vaultData);
+
+    msgEl.style.color='var(--accent3)'; msgEl.textContent='✅ Uploaded successfully!';
     setTimeout(() => {
       closeVaultUploadModal();
       openVaultCategory(vaultUploadCat);
     }, 800);
-  };
-  reader.onerror = () => {
-    msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Upload failed!';
-  };
+
+  } catch (err) {
+    console.error('Upload error:', err);
+    msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Upload failed: ' + err.message;
+  }
 }
 
 // Delete vault item
-function deleteVaultItem(catKey, index) {
+async function deleteVaultItem(catKey, index) {
   if (confirm('Delete this item?')) {
     vaultData[catKey].splice(index, 1);
-    saveVault();
+    await saveVaultToFirestore(vaultData);
     openVaultCategory(catKey);
   }
 }
@@ -2354,6 +2570,13 @@ function renderSettings() {
         </div>
       </div>
 
+      <div class="settings-section">
+        <div class="settings-title">🔐 Firestore Rules</div>
+        <div class="card" style="border-color:rgba(255,170,106,0.3)">
+          <div style="font-size:12px;color:#ffaa6a;font-weight:600;margin-bottom:8px">⚠️ Firebase Console → Firestore → Rules এ paste করো → Publish</div>
+          <pre style="background:var(--bg3);border-radius:8px;padding:12px;font-size:11px;overflow-x:auto;color:var(--accent3);white-space:pre-wrap">${FIRESTORE_RULES}</pre>
+        </div>
+      </div>
       <div class="settings-section">
         <div class="settings-title">ℹ️ About</div>
         <div class="card">
@@ -2641,7 +2864,7 @@ function doSearch(q) {
 // PROFILE PAGE — sidebar header click করলে দেখাবে
 // ================================================================
 let profileData = JSON.parse(localStorage.getItem('univ_profile') || '{}');
-function saveProfile() { localStorage.setItem('univ_profile', JSON.stringify(profileData)); }
+// saveProfile → saveProfileToFirestore (defined above)
 
 function renderProfile() {
   const isAdmin = !!currentUser;
@@ -2692,12 +2915,37 @@ function renderProfile() {
               <input type="text" class="form-input" id="profileDept" value="${p.dept||''}" placeholder="CSE"/>
             </div>
             <div class="form-group">
+              <label class="form-label">University Batch / Semester</label>
+              <input type="text" class="form-input" id="profileBatch" value="${p.batch||''}" placeholder="1st Year, 2nd Semester"/>
+            </div>
+            <div class="form-group">
               <label class="form-label">Student ID</label>
               <input type="text" class="form-input" id="profileStudentId" value="${p.studentId||''}" placeholder="2024-1-XX-XXX"/>
             </div>
+            <div class="form-group" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+              <label class="form-label" style="color:var(--accent2)">🏫 College</label>
+            </div>
             <div class="form-group">
-              <label class="form-label">Batch / Semester</label>
-              <input type="text" class="form-input" id="profileBatch" value="${p.batch||''}" placeholder="1st Year, 2nd Semester"/>
+              <label class="form-label">College Name</label>
+              <input type="text" class="form-input" id="profileCollege" value="${p.college||''}" placeholder="College name"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">College Batch</label>
+              <input type="text" class="form-input" id="profileCollegeBatch" value="${p.collegeBatch||''}" placeholder="e.g. Science 2022-24"/>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+              <label class="form-label" style="color:var(--accent3)">🏫 School</label>
+            </div>
+            <div class="form-group">
+              <label class="form-label">School Name</label>
+              <input type="text" class="form-input" id="profileSchool" value="${p.school||''}" placeholder="School name"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">School Batch</label>
+              <input type="text" class="form-input" id="profileSchoolBatch" value="${p.schoolBatch||''}" placeholder="e.g. SSC 2022"/>
+            </div>
+            <div class="form-group" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+              <label class="form-label">📋 Personal</label>
             </div>
             <div class="form-group">
               <label class="form-label">Birthdate</label>
@@ -2735,16 +2983,23 @@ function renderProfile() {
     </div>`;
 }
 
-function saveProfileData() {
-  profileData.name       = (document.getElementById('profileName')?.value||'').trim();
-  profileData.university = (document.getElementById('profileUniversity')?.value||'').trim();
-  profileData.dept       = (document.getElementById('profileDept')?.value||'').trim();
-  profileData.studentId  = (document.getElementById('profileStudentId')?.value||'').trim();
-  profileData.batch      = (document.getElementById('profileBatch')?.value||'').trim();
-  profileData.birth      = (document.getElementById('profileBirth')?.value||'').trim();
-  profileData.phone      = (document.getElementById('profilePhone')?.value||'').trim();
-  profileData.bio        = (document.getElementById('profileBio')?.value||'').trim();
-  saveProfile();
+async function saveProfileData() {
+  profileData.name         = (document.getElementById('profileName')?.value||'').trim();
+  profileData.university   = (document.getElementById('profileUniversity')?.value||'').trim();
+  profileData.dept         = (document.getElementById('profileDept')?.value||'').trim();
+  profileData.studentId    = (document.getElementById('profileStudentId')?.value||'').trim();
+  profileData.batch        = (document.getElementById('profileBatch')?.value||'').trim();
+  profileData.college      = (document.getElementById('profileCollege')?.value||'').trim();
+  profileData.collegeBatch = (document.getElementById('profileCollegeBatch')?.value||'').trim();
+  profileData.school       = (document.getElementById('profileSchool')?.value||'').trim();
+  profileData.schoolBatch  = (document.getElementById('profileSchoolBatch')?.value||'').trim();
+  profileData.birth        = (document.getElementById('profileBirth')?.value||'').trim();
+  profileData.phone        = (document.getElementById('profilePhone')?.value||'').trim();
+  profileData.bio          = (document.getElementById('profileBio')?.value||'').trim();
+  // Firestore এ save করো
+  try {
+    await saveProfileToFirestore(profileData);
+  } catch(e) { console.error('Profile save error:', e); }
 
   // Sidebar user name update
   if (profileData.name) {
@@ -2755,15 +3010,33 @@ function saveProfileData() {
   if (msg) { msg.style.display='block'; msg.textContent='✅ Profile saved!'; setTimeout(()=>msg.style.display='none',2000); }
 }
 
-function uploadProfilePic(input) {
+async function uploadProfilePic(input) {
   if (!input.files[0]) return;
-  const reader = new FileReader();
-  reader.readAsDataURL(input.files[0]);
-  reader.onload = () => {
-    profileData.pic = reader.result;
-    saveProfile();
+  const file = input.files[0];
+
+  // Show loading
+  const display = document.getElementById('profilePicDisplay');
+  if (display) display.innerHTML = '⏳';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    formData.append('folder', 'my_universe/profile');
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
+      { method: 'POST', body: formData }
+    );
+    const data = await res.json();
+
+    profileData.pic = data.secure_url;
+    await saveProfileToFirestore(profileData);
     renderProfile();
-  };
+  } catch(e) {
+    alert('Profile pic upload failed: ' + e.message);
+    renderProfile();
+  }
 }
 
 async function sendPasswordReset() {
@@ -2779,5 +3052,140 @@ async function sendPasswordReset() {
   msgEl.style.display = 'block';
 }
 
+
+// ================================================================
+// EDIT FUNCTIONS — সব জায়গায় edit করা যাবে
+// ================================================================
+
+function editSubject(i) {
+  const s = subjects[i];
+  document.getElementById('subjectName').value     = s.name||'';
+  document.getElementById('subjectEmoji').value    = s.emoji||'';
+  document.getElementById('subjectTags').value     = (s.tags||[]).join(', ');
+  document.getElementById('subjectLink').value     = s.link||'';
+  document.getElementById('subjectLinkDesc').value = s.linkDesc||'';
+  window._editSubjectIdx = i;
+  document.getElementById('subjectModal').classList.add('open');
+}
+
+function editProject(i) {
+  const p = projects[i];
+  window._editProjectIdx = i;
+  // Fields fill করো
+  const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val||''; };
+  setVal('projTitle',    p.title);
+  setVal('projCourse',   p.course);
+  setVal('projTeacher',  p.teacher);
+  setVal('projDeadline', p.deadline);
+  setVal('projNotes',    p.notes);
+  setVal('projLink',     p.link);
+  setVal('projLinkDesc', p.linkDesc);
+  const t = document.getElementById('projType');   if(t) t.value = p.type   || 'Term Paper';
+  const s = document.getElementById('projStatus'); if(s) s.value = p.status || 'Ongoing';
+  // File preview reset
+  const fp = document.getElementById('projFilesPreview');
+  if(fp) { fp.style.display = 'none'; }
+  // Show existing files count
+  if ((p.files||[]).length) {
+    if(fp) { fp.style.display='block'; fp.innerHTML = `📎 ${p.files.length} existing file(s) — new files will be added`; }
+  }
+  document.getElementById('projectModal').classList.add('open');
+}
+
+function editMember(i) {
+  const m = members[i];
+  document.getElementById('memberName').value   = m.name||'';
+  document.getElementById('memberId').value     = m.id||'';
+  document.getElementById('memberPhone').value  = m.phone||'';
+  document.getElementById('memberEmail').value  = m.email||'';
+  document.getElementById('memberRole').value   = m.role||'Member';
+  document.getElementById('memberSkills').value = m.skills||'';
+  document.getElementById('memberNotes').value  = m.notes||'';
+  window._editMemberIdx = i;
+  document.getElementById('memberModal').classList.add('open');
+}
+
+
+async function clearAllData() {
+  if (confirm('Delete ALL data from Cloud? Cannot undo!')) {
+    if (confirm('Really sure? This deletes everything permanently!')) {
+      try {
+        const docs = ['notes','members','projects','tasks','subjects','profile','vault'];
+        await Promise.all(docs.map(d => db.collection('universe_data').doc(d).delete()));
+        notes=[]; members=[]; projects=[]; tasks=[]; subjects=[];
+        profileData = {};
+        vaultData = {photos:[],videos:[],audio:[],documents:[],memories:[],private:[]};
+        alert('All data cleared!');
+        renderSettings();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+  }
+}
+
+// Firestore rules reminder — shown in renderSettings
+const FIRESTORE_RULES = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /universe_data/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}`;
+
+// Edit vault item — name ও description বদলানো যাবে
+function editVaultItem(catKey, index) {
+  const item = vaultData[catKey][index];
+  if (!item) return;
+
+  // Simple inline edit overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:100%;max-width:440px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
+      <div style="font-size:18px;font-weight:700;margin-bottom:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">✏️ Edit Item</div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-input" id="editVaultName" value="${item.name}" placeholder="Name"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="editVaultDesc" style="min-height:80px" placeholder="Description">${item.desc||''}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button onclick="saveVaultEdit('${catKey}',${index},this)" style="flex:1;padding:10px;background:linear-gradient(135deg,var(--accent),#5c4fd6);border:none;border-radius:10px;color:white;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer">💾 Save</button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--text2);font-family:var(--font);font-size:13px;cursor:pointer">Cancel</button>
+      </div>
+      <div id="editVaultMsg" style="font-size:12px;margin-top:10px;display:none;text-align:center"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  document.getElementById('editVaultName').focus();
+}
+
+async function saveVaultEdit(catKey, index, btn) {
+  const name = document.getElementById('editVaultName').value.trim();
+  const desc = document.getElementById('editVaultDesc').value.trim();
+  const msg  = document.getElementById('editVaultMsg');
+
+  if (!name) { msg.style.color='#ff6b6b'; msg.textContent='❌ Name cannot be empty!'; msg.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = '⏳ Saving...';
+
+  try {
+    vaultData[catKey][index].name = name;
+    vaultData[catKey][index].desc = desc;
+    await saveVaultToFirestore(vaultData);
+
+    msg.style.color = 'var(--accent3)'; msg.textContent = '✅ Saved!'; msg.style.display='block';
+    setTimeout(() => {
+      btn.closest('[style*=fixed]').remove();
+      openVaultCategory(catKey); // refresh
+    }, 600);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = '💾 Save';
+    msg.style.color='#ff6b6b'; msg.textContent='❌ Error: ' + e.message; msg.style.display='block';
+  }
+}
 </script>
 </body>
