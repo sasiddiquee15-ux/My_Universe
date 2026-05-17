@@ -1934,15 +1934,14 @@ function closeProjectModal() {
 }
 
 function renderProjects() {
+  const isAdmin = !!currentUser;
   document.getElementById('mainContent').innerHTML = `
     <div class="page">
       <div class="page-header">
         <div class="page-title">🎓 University Projects</div>
         <div class="page-sub">Term papers, programming projects, presentations</div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-        <button class="btn-add" onclick="openProjectModal()">➕ Add Project</button>
-      </div>
+      ${isAdmin ? '<div style="display:flex;justify-content:flex-end;margin-bottom:20px"><button class="btn-add" onclick="openProjectModal()">➕ Add Project</button></div>' : '<div style="margin-bottom:20px"></div>'}
       <div class="projects-list" id="projectsList"></div>
     </div>`;
   renderProjectsList();
@@ -2956,10 +2955,16 @@ function renderProfile() {
               <input type="text" class="form-input" id="profilePhone" value="${p.phone||''}" placeholder="01XXXXXXXXX"/>
             </div>
           ` : `
-            ${p.university ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">UNIVERSITY</div><div style="font-size:14px">${p.university}</div></div>` : ''}
-            ${p.dept ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">DEPARTMENT</div><div style="font-size:14px">${p.dept}</div></div>` : ''}
-            ${p.batch ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">BATCH</div><div style="font-size:14px">${p.batch}</div></div>` : ''}
-            ${p.studentId ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">STUDENT ID</div><div style="font-size:14px;font-family:var(--mono)">${p.studentId}</div></div>` : ''}
+            ${p.university ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">UNIVERSITY</div><div style="font-size:14px;font-weight:500">${p.university}</div></div>` : ''}
+            ${p.dept ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">DEPARTMENT</div><div style="font-size:14px;font-weight:500">${p.dept}</div></div>` : ''}
+            ${p.batch ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">BATCH / SEMESTER</div><div style="font-size:14px;font-weight:500">${p.batch}</div></div>` : ''}
+            ${p.studentId ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">STUDENT ID</div><div style="font-size:14px;font-family:var(--mono);font-weight:500">${p.studentId}</div></div>` : ''}
+            ${p.college ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">COLLEGE</div><div style="font-size:14px;font-weight:500">${p.college}</div></div>` : ''}
+            ${p.collegeBatch ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">COLLEGE BATCH</div><div style="font-size:14px;font-weight:500">${p.collegeBatch}</div></div>` : ''}
+            ${p.school ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">SCHOOL</div><div style="font-size:14px;font-weight:500">${p.school}</div></div>` : ''}
+            ${p.schoolBatch ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">SCHOOL BATCH</div><div style="font-size:14px;font-weight:500">${p.schoolBatch}</div></div>` : ''}
+            ${p.birth ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">BIRTHDATE</div><div style="font-size:14px;font-weight:500">${p.birth}</div></div>` : ''}
+            ${p.phone ? `<div><div style="font-size:11px;color:var(--text2);margin-bottom:2px">PHONE</div><div style="font-size:14px;font-weight:500">${p.phone}</div></div>` : ''}
           `}
         </div>
         ${p.bio || isAdmin ? `
