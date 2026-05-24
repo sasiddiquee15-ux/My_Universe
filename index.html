@@ -1370,16 +1370,40 @@ async function deleteVaultItemFromFirestore(docId) {
 }
 
 async function loadVaultFromFirestore() {
-  // সব categories লোড করো
-  const snapshot = await db.collection('vault_items').orderBy('createdAt', 'desc').get();
-  // Reset vault data
   VAULT_CATS.forEach(cat => { vaultData[cat.key] = []; });
+
+  // নতুন vault_items collection থেকে load করো
+  const snapshot = await db.collection('vault_items').orderBy('createdAt', 'desc').get();
   snapshot.forEach(doc => {
     const data = { ...doc.data(), _docId: doc.id };
     if (vaultData[data.catKey] !== undefined) {
       vaultData[data.catKey].push(data);
     }
   });
+
+  // পুরনো format থেকে migrate করো (একবারই চলবে)
+  const oldDoc = await db.collection('universe_data').doc('vault').get();
+  if (oldDoc.exists) {
+    const oldData = oldDoc.data();
+    let migrated = 0;
+    for (const cat of VAULT_CATS) {
+      const oldItems = oldData[cat.key] || [];
+      for (const item of oldItems) {
+        // নতুন collection এ already আছে কিনা check
+        const exists = vaultData[cat.key].some(n => n.data === item.data && n.name === item.name);
+        if (!exists && item.data) {
+          const docId = await addVaultItemToFirestore(cat.key, item);
+          vaultData[cat.key].unshift({ ...item, _docId: docId });
+          migrated++;
+        }
+      }
+    }
+    if (migrated > 0) {
+      console.log(`✅ Migrated ${migrated} old vault items to new format!`);
+      // পুরনো document delete করো
+      await db.collection('universe_data').doc('vault').delete();
+    }
+  }
 }
 
 // Legacy fallback — পুরনো format থেকে migrate করো
@@ -2368,9 +2392,9 @@ function openVaultCategory(catKey) {
     <div class="page">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap">
         <button class="vault-back-btn" onclick="renderVault()">← Back</button>
-        <div>
+        <div id="vaultCatHeader">
           <div class="page-title" style="margin-bottom:0">${cat.icon} ${cat.label}</div>
-          <div style="font-size:13px;color:var(--text2)">${items.length} item${items.length!==1?'s':''}</div>
+          <div style="font-size:13px;color:var(--text2)" id="vaultItemCount">${items.length.toLocaleString()} item${items.length!==1?'s':''}</div>
         </div>
         ${isAdmin ? `<button class="vault-upload-btn" style="margin-left:auto" onclick="openVaultUploadModal('${catKey}')">➕ Upload</button>` : ''}
       </div>
@@ -2385,14 +2409,34 @@ function openVaultCategory(catKey) {
   }
 }
 
-// Render media cards with animation
+// Render media cards with animation + bulk select
 function renderVaultItems(catKey) {
   const grid  = document.getElementById('vaultMediaGrid');
   if (!grid) return;
   const items = vaultData[catKey] || [];
   if (!items.length) return;
 
-  lightboxItems = items; // for lightbox navigation
+  lightboxItems = items;
+  const isAdmin = !!currentUser;
+
+  // Admin হলে bulk action toolbar দেখাও
+  if (isAdmin) {
+    const header = document.getElementById('vaultCatHeader');
+    if (header && !document.getElementById('bulkToolbar')) {
+      const toolbar = document.createElement('div');
+      toolbar.id = 'bulkToolbar';
+      toolbar.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:16px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;flex-wrap:wrap';
+      toolbar.innerHTML = `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+          <input type="checkbox" id="selectAllCheck" onchange="toggleSelectAll('${catKey}')" style="accent-color:var(--accent);width:16px;height:16px"/>
+          Select All
+        </label>
+        <span id="selectedCount" style="font-size:13px;color:var(--accent);font-weight:600"></span>
+        <button onclick="bulkDeleteVault('${catKey}')" id="bulkDeleteBtn" style="display:none;padding:7px 16px;background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);border-radius:8px;color:#ff6b6b;cursor:pointer;font-size:13px;font-family:var(--font);font-weight:600">🗑️ Delete Selected</button>
+      `;
+      header.parentNode.insertBefore(toolbar, header.nextSibling);
+    }
+  }
 
   grid.innerHTML = items.map((item, i) => {
     let thumb = '';
@@ -2405,8 +2449,10 @@ function renderVaultItems(catKey) {
     } else {
       thumb = `<div class="vault-media-thumb-placeholder">📄</div>`;
     }
-    const isAdmin = !!currentUser;
-    return `<div class="vault-media-card" id="vcard_${i}" onclick="openLightbox(${i}, '${catKey}')">
+    return `<div class="vault-media-card" id="vcard_${i}" onclick="handleVaultCardClick(event,${i},'${catKey}')">
+      ${isAdmin ? `<input type="checkbox" class="vault-check" data-idx="${i}" onchange="updateBulkCount('${catKey}')"
+        onclick="event.stopPropagation()"
+        style="position:absolute;top:8px;left:8px;z-index:2;width:18px;height:18px;accent-color:var(--accent);cursor:pointer;opacity:0;transition:opacity 0.2s"/>` : ''}
       ${thumb}
       <div class="vault-media-info">
         <div class="vault-media-name">${item.name}</div>
@@ -2419,13 +2465,83 @@ function renderVaultItems(catKey) {
     </div>`;
   }).join('');
 
-  // Animate cards in with slight delay
+  // Card hover এ checkbox দেখাও
+  grid.querySelectorAll('.vault-media-card').forEach(card => {
+    const cb = card.querySelector('.vault-check');
+    if (!cb) return;
+    card.addEventListener('mouseenter', () => cb.style.opacity = '1');
+    card.addEventListener('mouseleave', () => { if (!cb.checked) cb.style.opacity = '0'; });
+  });
+
+  // Animate
   items.forEach((_, i) => {
     setTimeout(() => {
       const el = document.getElementById('vcard_' + i);
       if (el) el.classList.add('visible');
-    }, i * 80);
+    }, i * 60);
   });
+}
+
+// Card click — checkbox checked থাকলে select করো, না হলে lightbox খুলো
+function handleVaultCardClick(event, i, catKey) {
+  const checks = document.querySelectorAll('.vault-check');
+  const anyChecked = Array.from(checks).some(c => c.checked);
+  if (anyChecked) {
+    // Selection mode — toggle this card
+    const cb = document.querySelector(`.vault-check[data-idx="${i}"]`);
+    if (cb) { cb.checked = !cb.checked; cb.style.opacity = '1'; updateBulkCount(catKey); }
+  } else {
+    openLightbox(i, catKey);
+  }
+}
+
+// Select All toggle
+function toggleSelectAll(catKey) {
+  const allCheck = document.getElementById('selectAllCheck');
+  document.querySelectorAll('.vault-check').forEach(cb => {
+    cb.checked = allCheck.checked;
+    cb.style.opacity = allCheck.checked ? '1' : '0';
+  });
+  updateBulkCount(catKey);
+}
+
+// Selected count update
+function updateBulkCount(catKey) {
+  const checked = document.querySelectorAll('.vault-check:checked');
+  const countEl = document.getElementById('selectedCount');
+  const btnEl   = document.getElementById('bulkDeleteBtn');
+  if (countEl) countEl.textContent = checked.length > 0 ? `${checked.length} selected` : '';
+  if (btnEl)   btnEl.style.display = checked.length > 0 ? 'block' : 'none';
+  // Select All checkbox state
+  const all = document.querySelectorAll('.vault-check');
+  const allCheck = document.getElementById('selectAllCheck');
+  if (allCheck && all.length > 0) {
+    allCheck.indeterminate = checked.length > 0 && checked.length < all.length;
+    allCheck.checked = checked.length === all.length;
+  }
+}
+
+// Bulk delete
+async function bulkDeleteVault(catKey) {
+  const checked = Array.from(document.querySelectorAll('.vault-check:checked'));
+  if (!checked.length) return;
+  if (!confirm(`Delete ${checked.length} selected item(s)?`)) return;
+
+  const indices = checked.map(cb => parseInt(cb.dataset.idx)).sort((a,b) => b-a); // reverse sort
+
+  // Show progress
+  const btn = document.getElementById('bulkDeleteBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Deleting...'; }
+
+  for (const idx of indices) {
+    const item = vaultData[catKey][idx];
+    if (item && item._docId) {
+      try { await deleteVaultItemFromFirestore(item._docId); } catch(e) {}
+    }
+    vaultData[catKey].splice(idx, 1);
+  }
+
+  openVaultCategory(catKey); // refresh
 }
 
 // Open vault upload modal
