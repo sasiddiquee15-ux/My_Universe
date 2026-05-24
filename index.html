@@ -836,7 +836,7 @@
     <div class="drop-zone" id="dropZone">
       <div class="drop-zone-icon" id="dropZoneIcon">📁</div>
       <div class="drop-zone-text">Click or drag & drop your file here</div>
-      <input type="file" id="vaultFile" onchange="previewVaultFile(this)"/>
+      <input type="file" id="vaultFile" multiple onchange="previewVaultFile(this)"/>
     </div>
     <div id="vaultFilePreview" style="margin-bottom:12px;display:none">
       <div style="font-size:12px;color:var(--accent);margin-bottom:6px" id="vaultFileName"></div>
@@ -1348,8 +1348,44 @@ async function saveProfileToFirestore(data) {
   await db.collection('universe_data').doc('profile').set(data);
 }
 // Vault metadata (file URLs from Cloudinary)
+// ================================================================
+// VAULT FIRESTORE — প্রতিটা item আলাদা document এ
+// এতে 1000+ items রাখা যাবে, 1MB limit নেই
+// ================================================================
+async function addVaultItemToFirestore(catKey, item) {
+  const docRef = await db.collection('vault_items').add({
+    ...item,
+    catKey,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  return docRef.id;
+}
+
+async function updateVaultItemInFirestore(docId, updates) {
+  await db.collection('vault_items').doc(docId).update(updates);
+}
+
+async function deleteVaultItemFromFirestore(docId) {
+  await db.collection('vault_items').doc(docId).delete();
+}
+
+async function loadVaultFromFirestore() {
+  // সব categories লোড করো
+  const snapshot = await db.collection('vault_items').orderBy('createdAt', 'desc').get();
+  // Reset vault data
+  VAULT_CATS.forEach(cat => { vaultData[cat.key] = []; });
+  snapshot.forEach(doc => {
+    const data = { ...doc.data(), _docId: doc.id };
+    if (vaultData[data.catKey] !== undefined) {
+      vaultData[data.catKey].push(data);
+    }
+  });
+}
+
+// Legacy fallback — পুরনো format থেকে migrate করো
 async function saveVaultToFirestore(vaultData) {
-  await db.collection('universe_data').doc('vault').set(vaultData);
+  // পুরনো single-doc format এর জন্য fallback
+  // নতুন items addVaultItemToFirestore দিয়ে যাবে
 }
 
 // ================================================================
@@ -1385,13 +1421,12 @@ async function loadAllDataFromFirestore() {
       profileData = profileDoc.data();
     }
 
-    // Vault load করো
-    if (vaultDoc.exists) {
-      const vd = vaultDoc.data();
-      ['photos','videos','audio','documents','memories','private'].forEach(k => {
-        if (!vaultData[k]) vaultData[k] = [];
-        if (vd[k]) vaultData[k] = vd[k];
-      });
+    // Vault load করো — আলাদা collection থেকে
+    try {
+      await loadVaultFromFirestore();
+    } catch(e) {
+      console.log('Vault load error:', e);
+      VAULT_CATS.forEach(cat => { if (!vaultData[cat.key]) vaultData[cat.key] = []; });
     }
 
     console.log('✅ Data loaded from Firestore:', { notes: notes.length, projects: projects.length });
@@ -2315,7 +2350,7 @@ function renderVault() {
           return `<div class="folder-item" onclick="openVaultCategory('${cat.key}')">
             <div class="folder-icon">${cat.icon}</div>
             <div class="folder-name">${cat.label}</div>
-            <div class="folder-count">${items.length} item${items.length!==1?'s':''}</div>
+            <div class="folder-count">${items.length.toLocaleString()} item${items.length!==1?'s':''}</div>
           </div>`;
         }).join('')}
       </div>
@@ -2411,74 +2446,107 @@ function closeVaultUploadModal() {
 
 // Preview selected file name
 function previewVaultFile(input) {
-  if (input.files[0]) {
-    document.getElementById('vaultFileName').textContent = '📎 ' + input.files[0].name;
-    document.getElementById('vaultFilePreview').style.display = 'block';
-    // Auto-fill name if empty
-    if (!document.getElementById('vaultItemName').value) {
-      document.getElementById('vaultItemName').value = input.files[0].name.split('.')[0];
+  if (input.files.length) {
+    const preview = document.getElementById('vaultFilePreview');
+    const nameEl  = document.getElementById('vaultFileName');
+    preview.style.display = 'block';
+    if (input.files.length === 1) {
+      nameEl.textContent = '📎 ' + input.files[0].name;
+      if (!document.getElementById('vaultItemName').value) {
+        document.getElementById('vaultItemName').value = input.files[0].name.split('.')[0];
+      }
+    } else {
+      nameEl.textContent = `📎 ${input.files.length} files selected`;
+      document.getElementById('vaultItemName').value = '';
+      document.getElementById('vaultItemName').placeholder = 'Auto-filled per file';
     }
   }
 }
 
-// Upload vault item — Cloudinary এ upload, URL Firestore এ save
+// Upload vault items — multiple files support + progress bar
 async function uploadVaultItem() {
-  const file  = document.getElementById('vaultFile').files[0];
+  const files = document.getElementById('vaultFile').files;
   const name  = document.getElementById('vaultItemName').value.trim();
   const desc  = document.getElementById('vaultItemDesc').value.trim();
   const msgEl = document.getElementById('vaultUploadMsg');
 
-  if (!file) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please select a file!'; msgEl.style.display='block'; return; }
-  if (!name) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please enter a name!'; msgEl.style.display='block'; return; }
+  if (!files.length) { msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Please select file(s)!'; msgEl.style.display='block'; return; }
 
-  msgEl.style.color='var(--accent3)'; msgEl.textContent='⏳ Uploading to cloud...'; msgEl.style.display='block';
+  const total = files.length;
+  let done = 0, failed = 0;
 
-  try {
-    // Cloudinary এ upload করো
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-    formData.append('folder', 'my_universe/' + vaultUploadCat);
+  msgEl.style.display = 'block';
 
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`,
-      { method: 'POST', body: formData }
-    );
+  for (const file of Array.from(files)) {
+    const itemName = total === 1 ? (name || file.name.split('.')[0]) : file.name.split('.')[0];
+    msgEl.style.color = 'var(--accent3)';
+    msgEl.innerHTML = `⏳ Uploading ${done+1} of ${total}: <strong>${file.name}</strong>
+      <div style="margin-top:8px;background:var(--bg3);border-radius:20px;height:6px;overflow:hidden">
+        <div style="background:var(--accent);height:100%;width:${Math.round((done/total)*100)}%;transition:width 0.3s"></div>
+      </div>`;
 
-    if (!res.ok) throw new Error('Upload failed');
-    const data = await res.json();
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_PRESET);
+      formData.append('folder', 'my_universe/' + vaultUploadCat);
 
-    // Cloudinary URL Firestore এ save করো
-    if (!vaultData[vaultUploadCat]) vaultData[vaultUploadCat] = [];
-    vaultData[vaultUploadCat].push({
-      name, desc,
-      data:      data.secure_url,  // Cloudinary URL
-      publicId:  data.public_id,
-      type:      file.type,
-      size:      file.size,
-      uploadedAt: new Date().toISOString()
-    });
+      const res  = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/auto/upload`, { method:'POST', body:formData });
+      const data = await res.json();
 
-    await saveVaultToFirestore(vaultData);
+      if (data.error) throw new Error(data.error.message);
 
-    msgEl.style.color='var(--accent3)'; msgEl.textContent='✅ Uploaded successfully!';
-    setTimeout(() => {
-      closeVaultUploadModal();
-      openVaultCategory(vaultUploadCat);
-    }, 800);
+      const item = {
+        name: itemName, desc,
+        data: data.secure_url,
+        publicId: data.public_id,
+        type: file.type, size: file.size,
+        uploadedAt: new Date().toISOString()
+      };
 
-  } catch (err) {
-    console.error('Upload error:', err);
-    msgEl.style.color='#ff6b6b'; msgEl.textContent='❌ Upload failed: ' + err.message;
+      // Firestore এ আলাদা document এ save
+      const docId = await addVaultItemToFirestore(vaultUploadCat, item);
+      item._docId = docId;
+
+      if (!vaultData[vaultUploadCat]) vaultData[vaultUploadCat] = [];
+      vaultData[vaultUploadCat].unshift(item);
+      done++;
+
+    } catch(err) {
+      console.error('Upload error:', file.name, err);
+      failed++;
+      done++;
+    }
   }
+
+  if (failed === 0) {
+    msgEl.style.color = 'var(--accent3)';
+    msgEl.textContent = `✅ ${total} file${total>1?'s':''} uploaded successfully!`;
+  } else {
+    msgEl.style.color = '#ffaa6a';
+    msgEl.textContent = `⚠️ ${done-failed} uploaded, ${failed} failed.`;
+  }
+
+  setTimeout(() => {
+    closeVaultUploadModal();
+    openVaultCategory(vaultUploadCat);
+  }, 1000);
 }
 
 // Delete vault item
 async function deleteVaultItem(catKey, index) {
   if (confirm('Delete this item?')) {
-    vaultData[catKey].splice(index, 1);
-    await saveVaultToFirestore(vaultData);
-    openVaultCategory(catKey);
+    const item = vaultData[catKey][index];
+    try {
+      // Firestore থেকে delete
+      if (item._docId) {
+        await deleteVaultItemFromFirestore(item._docId);
+      }
+      vaultData[catKey].splice(index, 1);
+      openVaultCategory(catKey);
+    } catch(e) {
+      alert('Delete failed: ' + e.message);
+    }
   }
 }
 
@@ -3178,14 +3246,22 @@ async function saveVaultEdit(catKey, index, btn) {
   btn.disabled = true; btn.textContent = '⏳ Saving...';
 
   try {
-    vaultData[catKey][index].name = name;
-    vaultData[catKey][index].desc = desc;
-    await saveVaultToFirestore(vaultData);
+    const item = vaultData[catKey][index];
+    item.name = name; item.desc = desc;
+
+    // Firestore document update
+    if (item._docId) {
+      await updateVaultItemInFirestore(item._docId, { name, desc });
+    } else {
+      // Legacy — add as new doc
+      const docId = await addVaultItemToFirestore(catKey, item);
+      item._docId = docId;
+    }
 
     msg.style.color = 'var(--accent3)'; msg.textContent = '✅ Saved!'; msg.style.display='block';
     setTimeout(() => {
       btn.closest('[style*=fixed]').remove();
-      openVaultCategory(catKey); // refresh
+      openVaultCategory(catKey);
     }, 600);
   } catch(e) {
     btn.disabled = false; btn.textContent = '💾 Save';
